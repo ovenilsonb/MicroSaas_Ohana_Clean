@@ -11,15 +11,18 @@ import {
   Copy,
   Trash2,
   FlaskConical,
+  Package,
   Flag,
   X,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Insumo, InsumoVariante } from '../types';
 import { Modal } from './Modal';
 import { dataService } from '../lib/dataService';
 import { Input } from './ui/Input';
 import { CurrencyInput } from './ui/CurrencyInput';
 import { Select } from './ui/Select';
+import { InsumoMovimentacaoTab } from './InsumoMovimentacaoTab';
 
 // Props interface - recebe dados do App.tsx
 interface InsumosProps {
@@ -42,11 +45,13 @@ export function Insumos({ insumos, setInsumos, canAdd = true }: InsumosProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [insumoToDelete, setInsumoToDelete] = useState<string | null>(null);
   const [editingInsumo, setEditingInsumo] = useState<Insumo | null>(null);
-  const [activeTab, setActiveTab] = useState<'geral' | 'tecnico'>('geral');
+  const [activeTab, setActiveTab] = useState<'geral' | 'tecnico' | 'movimentacao'>('geral');
+  const [duplicateNameError, setDuplicateNameError] = useState(false);
 
   // Form state
   const [form, setForm] = useState<Partial<Insumo>>({
     nome: '',
+    apelido: '',
     codigo: '',
     unidade: 'kg',
     valorUnitario: 0,
@@ -82,7 +87,8 @@ export function Insumos({ insumos, setInsumos, canAdd = true }: InsumosProps) {
   const filteredInsumos = insumos
     .filter(i => 
       i.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      i.codigo.toLowerCase().includes(searchTerm.toLowerCase())
+      i.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (i.apelido && i.apelido.toLowerCase().includes(searchTerm.toLowerCase()))
     )
     .sort((a, b) => {
       switch (sortMode) {
@@ -102,6 +108,7 @@ export function Insumos({ insumos, setInsumos, canAdd = true }: InsumosProps) {
     setEditingInsumo(null);
     setForm({
       nome: '',
+      apelido: '',
       codigo: '',
       unidade: 'kg',
       valorUnitario: 0,
@@ -113,6 +120,7 @@ export function Insumos({ insumos, setInsumos, canAdd = true }: InsumosProps) {
       variantes: [],
     });
     setHasVariants(false);
+    setDuplicateNameError(false);
     setShowModal(true);
   };
 
@@ -120,11 +128,22 @@ export function Insumos({ insumos, setInsumos, canAdd = true }: InsumosProps) {
     setEditingInsumo(insumo);
     setForm({ ...insumo });
     setHasVariants((insumo.variantes?.length ?? 0) > 0);
+    setDuplicateNameError(false);
     setShowModal(true);
   };
 
   const handleSave = () => {
     if (!form.nome || !form.unidade) return;
+
+    const isDuplicateName = insumos.some(
+      (i) => i.nome.toLowerCase() === form.nome?.toLowerCase() && i.id !== editingInsumo?.id
+    );
+
+    if (isDuplicateName) {
+      setDuplicateNameError(true);
+      setTimeout(() => setDuplicateNameError(false), 3000);
+      return;
+    }
 
     if (editingInsumo) {
       setInsumos(prev => prev.map(i => i.id === editingInsumo.id ? { ...i, ...form, unidade: form.unidade?.toUpperCase() } as Insumo : i));
@@ -419,9 +438,12 @@ export function Insumos({ insumos, setInsumos, canAdd = true }: InsumosProps) {
             return (
               <div
                 key={insumo.id}
-                className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow"
+                className="relative bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group overflow-hidden"
               >
-                <div className="flex items-start justify-between mb-3">
+                {/* Watermark */}
+                <Package className="absolute -right-4 -bottom-4 w-24 h-24 text-gray-100 dark:text-gray-700/30 opacity-50 group-hover:scale-110 transition-transform duration-500 pointer-events-none" />
+                
+                <div className="relative z-10 flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className={`w-3 h-3 rounded-full ${validadeStatus.color}`} />
                     {insumo.quimico ? (
@@ -649,40 +671,126 @@ export function Insumos({ insumos, setInsumos, canAdd = true }: InsumosProps) {
           <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
             <button
               onClick={() => setActiveTab('geral')}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
                 activeTab === 'geral'
                   ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
+              <motion.div
+                animate={activeTab === 'geral' ? { 
+                  scale: [1, 1.2, 1],
+                  rotate: [0, -10, 10, 0]
+                } : { 
+                  scale: 1, 
+                  rotate: 0 
+                }}
+                transition={activeTab === 'geral' ? { 
+                  duration: 2, 
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                } : { 
+                  duration: 0.3 
+                }}
+              >
+                <Package className="w-4 h-4" />
+              </motion.div>
               Geral
             </button>
             <button
               onClick={() => setActiveTab('tecnico')}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
                 activeTab === 'tecnico'
                   ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
+              <motion.div
+                animate={activeTab === 'tecnico' ? { 
+                  scale: [1, 1.2, 1],
+                  rotate: [0, -10, 10, 0]
+                } : { 
+                  scale: 1, 
+                  rotate: 0 
+                }}
+                transition={activeTab === 'tecnico' ? { 
+                  duration: 2, 
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                } : { 
+                  duration: 0.3 
+                }}
+              >
+                <FlaskConical className="w-4 h-4" />
+              </motion.div>
               Informações Técnicas
+            </button>
+            <button
+              onClick={() => setActiveTab('movimentacao')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                activeTab === 'movimentacao'
+                  ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              <motion.div
+                animate={activeTab === 'movimentacao' ? { 
+                  scale: [1, 1.2, 1],
+                  rotate: [0, -10, 10, 0]
+                } : { 
+                  scale: 1, 
+                  rotate: 0 
+                }}
+                transition={activeTab === 'movimentacao' ? { 
+                  duration: 2, 
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                } : { 
+                  duration: 0.3 
+                }}
+              >
+                <List className="w-4 h-4" />
+              </motion.div>
+              Movimentação de Estoque
             </button>
           </div>
 
           {activeTab === 'geral' ? (
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="Nome *"
-                  type="text"
-                  value={form.nome || ''}
-                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                />
+                <div className="space-y-1">
+                  <Input
+                    label="Nome *"
+                    type="text"
+                    value={form.nome || ''}
+                    onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                  />
+                  {duplicateNameError && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-sm text-red-500 flex items-center gap-1"
+                    >
+                      <motion.span
+                        animate={{ opacity: [1, 0.5, 1] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                        className="w-2 h-2 bg-red-500 rounded-full inline-block"
+                      />
+                      Já existe um insumo cadastrado com esse nome
+                    </motion.p>
+                  )}
+                </div>
                 <Input
                   label="Código"
                   type="text"
                   value={form.codigo || ''}
                   onChange={(e) => setForm({ ...form, codigo: e.target.value })}
+                />
+                <Input
+                  label="Apelido"
+                  type="text"
+                  value={form.apelido || ''}
+                  onChange={(e) => setForm({ ...form, apelido: e.target.value })}
                 />
                 <Select
                   label="Unidade *"
@@ -860,7 +968,7 @@ export function Insumos({ insumos, setInsumos, canAdd = true }: InsumosProps) {
             )}
           </div>
           </div>
-          ) : (
+          ) : activeTab === 'tecnico' ? (
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <Input
@@ -911,7 +1019,12 @@ export function Insumos({ insumos, setInsumos, canAdd = true }: InsumosProps) {
                 </div>
               </div>
             </div>
-          )}
+          ) : activeTab === 'movimentacao' ? (
+            <InsumoMovimentacaoTab 
+              insumo={form} 
+              onUpdateInsumo={(updatedInsumo) => setForm(prev => ({ ...prev, ...updatedInsumo }))} 
+            />
+          ) : null}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">

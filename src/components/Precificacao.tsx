@@ -1,7 +1,4 @@
 import { useState } from 'react';
-import { PricingReport } from './reports/PricingReport';
-import { PrintPreviewModal } from './reports/PrintPreviewModal';
-import { printComponent } from '../utils/printUtils';
 import {
   Search,
   List,
@@ -10,7 +7,6 @@ import {
   ArrowDownAZ,
   Minus,
   Plus,
-  Printer,
   Eye,
   Tag,
   Edit2,
@@ -31,6 +27,7 @@ import {
   PieChart as PieChartIcon,
   BarChart as BarChartIcon,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import {
   PieChart,
   Pie,
@@ -44,7 +41,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { Formula, Precificacao as PrecificacaoType, Grupo } from '../types';
-import { formulasData, gruposData, insumosData } from '../data/mockData';
+import { gruposData } from '../data/mockData';
 import { Modal } from './Modal';
 import { CurrencyInput } from './ui/CurrencyInput';
 
@@ -87,32 +84,29 @@ interface ListaPrecoAvancada {
 }
 
 interface ListaPrecoProps {
+  formulas: Formula[];
+  insumosData: any[];
   listasPreco: ListaPrecoAvancada[];
   setListasPreco: React.Dispatch<React.SetStateAction<ListaPrecoAvancada[]>>;
   precificacoes: Record<string, PrecificacaoType>;
-  companyName?: string;
-  companyLogo?: string;
+  setPrecificacoes: React.Dispatch<React.SetStateAction<Record<string, PrecificacaoType>>>;
 }
 
-export function Precificacao({ listasPreco: listasExternas, setListasPreco: setListasExternas, precificacoes: precificacoesExternas }: Partial<ListaPrecoProps>) {
+export function Precificacao({ 
+  formulas = [], 
+  insumosData = [], 
+  listasPreco = [], 
+  setListasPreco, 
+  precificacoes = {}, 
+  setPrecificacoes
+}: ListaPrecoProps) {
   const [activeTab, setActiveTab] = useState<TabType>('precos');
-  const [formulas] = useState<Formula[]>(formulasData);
   const [grupos] = useState<Grupo[]>(gruposData);
-  const [precificacoes, setPrecificacoes] = useState<Record<string, PrecificacaoType>>(precificacoesExternas || {});
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortMode, setSortMode] = useState<SortMode>('az');
   const [selectedFormula, setSelectedFormula] = useState<Formula | null>(null);
   const [showModal, setShowModal] = useState(false);
-
-  const [printPreviewData, setPrintPreviewData] = useState<{formula: Formula, precificacao: PrecificacaoType & { unitType: '2L' | '5L' }} | null>(null);
-
-  const handleActualPrint = () => {
-    const reportElement = document.getElementById('print-preview-content');
-    if (reportElement) {
-      printComponent(reportElement.innerHTML);
-    }
-  };
 
   // Form state para Precificação
   const [custosFixos, setCustosFixos] = useState(0);
@@ -122,11 +116,9 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
   const [precoFardo, setPrecoFardo] = useState(0);
   const [unitType, setUnitType] = useState<UnitType>('2L');
 
-  // Estado para Lista de Preços Avançada
-  const [listasPreco, setListasPreco] = useState<ListaPrecoAvancada[]>(listasExternas || []);
   const [showListaModal, setShowListaModal] = useState(false);
   const [editingLista, setEditingLista] = useState<ListaPrecoAvancada | null>(null);
-  
+
   // Form state para Lista de Preços
   const [listaFormData, setListaFormData] = useState<{
     nome: string;
@@ -200,7 +192,7 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
     formula.insumos.forEach(fi => {
       const insumo = insumosData.find(i => i.id === fi.insumoId);
       if (insumo?.variantes && insumo.variantes.length > 0) {
-        const precos = insumo.variantes.map(v => v.valorUnitario);
+        const precos = insumo.variantes.map((v: any) => v.valorUnitario);
         custoMin += Math.min(...precos) * fi.quantidade;
         custoMax += Math.max(...precos) * fi.quantidade;
       } else {
@@ -229,7 +221,7 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
     formula.insumos.forEach(fi => {
       const insumo = insumosData.find(i => i.id === fi.insumoId);
       if (insumo?.variantes && insumo.variantes.length > 0) {
-        insumo.variantes.forEach(v => {
+        insumo.variantes.forEach((v: any) => {
           // Calcular custo da fórmula com esta variante
           let custoTotal = 0;
           formula.insumos.forEach(fi2 => {
@@ -338,7 +330,7 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
       updatedAt: new Date().toISOString(),
     };
 
-    setPrecificacoes(prev => ({
+    setPrecificacoes((prev: Record<string, PrecificacaoType>) => ({
       ...prev,
       [selectedFormula.id]: pricing,
     }));
@@ -538,15 +530,9 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
     };
 
     if (editingLista) {
-      setListasPreco(prev => prev.map(l => l.id === editingLista.id ? novaLista : l));
-      if (setListasExternas) {
-        setListasExternas(prev => prev.map(l => l.id === editingLista.id ? novaLista : l));
-      }
+      setListasPreco((prev: ListaPrecoAvancada[]) => prev.map((l: ListaPrecoAvancada) => l.id === editingLista.id ? novaLista : l));
     } else {
-      setListasPreco(prev => [...prev, novaLista]);
-      if (setListasExternas) {
-        setListasExternas(prev => [...prev, novaLista]);
-      }
+      setListasPreco((prev: ListaPrecoAvancada[]) => [...prev, novaLista]);
     }
 
     setShowListaModal(false);
@@ -555,10 +541,7 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
 
   const handleDeleteLista = (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta lista de preços?')) {
-      setListasPreco(prev => prev.filter(l => l.id !== id));
-      if (setListasExternas) {
-        setListasExternas(prev => prev.filter(l => l.id !== id));
-      }
+      setListasPreco((prev: ListaPrecoAvancada[]) => prev.filter((l: ListaPrecoAvancada) => l.id !== id));
     }
   };
 
@@ -570,17 +553,11 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
       dataCriacao: new Date().toISOString(),
       regras: lista.regras.map(r => ({ ...r, id: `RG-${Date.now()}-${Math.random()}` }))
     };
-    setListasPreco(prev => [...prev, novaLista]);
-    if (setListasExternas) {
-      setListasExternas(prev => [...prev, novaLista]);
-    }
+    setListasPreco((prev: ListaPrecoAvancada[]) => [...prev, novaLista]);
   };
 
   const handleToggleListaAtivo = (id: string) => {
-    setListasPreco(prev => prev.map(l => l.id === id ? { ...l, ativo: !l.ativo } : l));
-    if (setListasExternas) {
-      setListasExternas(prev => prev.map(l => l.id === id ? { ...l, ativo: !l.ativo } : l));
-    }
+    setListasPreco((prev: ListaPrecoAvancada[]) => prev.map((l: ListaPrecoAvancada) => l.id === id ? { ...l, ativo: !l.ativo } : l));
   };
 
   const handleViewListaPrecos = (lista: ListaPrecoAvancada) => {
@@ -614,7 +591,24 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700/50'
           }`}
         >
-          <DollarSign size={18} />
+          <motion.div
+            animate={activeTab === 'precos' ? { 
+              scale: [1, 1.2, 1],
+              rotate: [0, -10, 10, 0]
+            } : { 
+              scale: 1, 
+              rotate: 0 
+            }}
+            transition={activeTab === 'precos' ? { 
+              duration: 2, 
+              repeat: Infinity,
+              ease: "easeInOut"
+            } : { 
+              duration: 0.3 
+            }}
+          >
+            <DollarSign size={18} />
+          </motion.div>
           Preços
         </button>
         <button
@@ -625,7 +619,24 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
               : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700/50'
           }`}
         >
-          <Tag size={18} />
+          <motion.div
+            animate={activeTab === 'listas' ? { 
+              scale: [1, 1.2, 1],
+              rotate: [0, -10, 10, 0]
+            } : { 
+              scale: 1, 
+              rotate: 0 
+            }}
+            transition={activeTab === 'listas' ? { 
+              duration: 2, 
+              repeat: Infinity,
+              ease: "easeInOut"
+            } : { 
+              duration: 0.3 
+            }}
+          >
+            <Tag size={18} />
+          </motion.div>
           Lista de Preços
         </button>
       </div>
@@ -857,13 +868,16 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
               {listasPreco.map((lista) => (
                 <div
                   key={lista.id}
-                  className={`bg-white dark:bg-gray-800/50 rounded-2xl p-5 border shadow-sm transition-all ${
+                  className={`relative bg-white dark:bg-gray-800/50 rounded-2xl p-5 border shadow-sm transition-all group overflow-hidden ${
                     lista.ativo 
                       ? 'border-gray-200 dark:border-gray-700/50 hover:border-blue-500/50 dark:hover:border-blue-500/50' 
                       : 'border-red-200 dark:border-red-500/30 opacity-60'
                   }`}
                 >
-                  <div className="flex items-start justify-between mb-3">
+                  {/* Watermark */}
+                  <DollarSign className="absolute -right-4 -bottom-4 w-24 h-24 text-gray-100 dark:text-gray-700/30 opacity-50 group-hover:scale-110 transition-transform duration-500 pointer-events-none" />
+                  
+                  <div className="relative z-10 flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       {lista.aplicarA === 'produto' ? (
                         <Package size={16} className="text-blue-600 dark:text-blue-400" />
@@ -1170,7 +1184,7 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
                     Composição do Preço (Varejo)
                   </h3>
                   <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <PieChart>
                         <Pie
                           data={[
@@ -1228,7 +1242,7 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
                     Comparativo de Margens (%)
                   </h3>
                   <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <BarChart data={[
                         { name: 'Varejo', margem: margemVarejo },
                         { name: 'Atacado', margem: margemAtacado },
@@ -1273,14 +1287,7 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
             </div>
 
             {/* Actions */}
-            <div className="flex justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setPrintPreviewData({ formula: selectedFormula, precificacao: { ...precificacoes[selectedFormula.id], unitType } })}
-                className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-all"
-              >
-                <Printer size={18} />
-                <span>Imprimir Relatório</span>
-              </button>
+            <div className="flex justify-end items-center pt-6 border-t border-gray-200 dark:border-gray-700">
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowModal(false)}
@@ -1856,20 +1863,6 @@ export function Precificacao({ listasPreco: listasExternas, setListasPreco: setL
           </div>
         )}
       </Modal>
-      {/* Print Preview Modal */}
-      <PrintPreviewModal
-        isOpen={!!printPreviewData}
-        onClose={() => setPrintPreviewData(null)}
-        onPrint={handleActualPrint}
-        title="Pré-visualização da Precificação"
-      >
-        {printPreviewData && (
-          <PricingReport 
-            formula={printPreviewData.formula} 
-            precificacao={printPreviewData.precificacao} 
-          />
-        )}
-      </PrintPreviewModal>
     </div>
   );
 }

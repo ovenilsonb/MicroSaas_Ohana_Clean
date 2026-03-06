@@ -6,118 +6,96 @@ interface FormulaReportProps {
   formula: Formula;
 }
 
-export const FormulaReport: React.FC<FormulaReportProps> = ({ formula }) => {
+export const FormulaReport: React.FC<FormulaReportProps & { companyName?: string; companyLogo?: string; config?: any }> = ({ formula, companyName, companyLogo, config }) => {
   const custoTotal = formula.insumos.reduce((acc, insumo) => acc + (insumo.quantidade * insumo.valorUnitario), 0);
   const custoUnidade = custoTotal / (formula.rendimento || 1);
-  const totalQuimico = formula.insumos.reduce((acc, insumo) => insumo.quimico ? acc + insumo.quantidade : acc, 0);
+  const totalChemicalOriginal = formula.insumos.reduce((acc, i) => i.quimico ? acc + i.quantidade : acc, 0);
 
   return (
-    <ReportTemplate title="Ficha Técnica de Produção">
-      <div className="flex gap-8 items-start">
-        
-        {/* Coluna Esquerda: Resumo e Dados do Produto (35%) */}
-        <div className="w-[35%] flex flex-col gap-6">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-800 mb-1 leading-tight">{formula.nome}</h2>
-            <p className="text-xs font-semibold text-slate-400 font-mono uppercase tracking-widest">{formula.codigo}</p>
-            <div className="mt-3">
-              <span className={`inline-flex px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest border ${
-                formula.status === 'finalizado' 
-                  ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                  : 'bg-amber-50 text-amber-600 border-amber-100'
-              }`}>
-                {formula.status}
-              </span>
+    <ReportTemplate title="Ficha Técnica de Produção" companyName={companyName} companyLogo={companyLogo} config={config}>
+      <div className="space-y-8">
+        {/* Informações Básicas */}
+        <div className="grid grid-cols-3 gap-6">
+          <div className="col-span-2">
+            <h2 className="text-xl font-bold text-slate-900 mb-2">{formula.nome}</h2>
+            <div className="flex gap-4 text-xs">
+              <p><span className="font-bold text-slate-400 uppercase tracking-wider">Código:</span> {formula.codigo || 'N/A'}</p>
+              <p><span className="font-bold text-slate-400 uppercase tracking-wider">Status:</span> {formula.status.toUpperCase()}</p>
             </div>
           </div>
-
-          <div className="space-y-3">
-            <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-100">
-              <p className="text-[9px] uppercase tracking-widest text-slate-400 font-bold mb-1">Rendimento Esperado</p>
-              <p className="text-lg font-bold text-slate-700 font-mono">{formula.rendimento} <span className="text-xs font-medium text-slate-500">{formula.unidade}</span></p>
-            </div>
-            
-            <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-100">
-              <p className="text-[9px] uppercase tracking-widest text-slate-400 font-bold mb-1">Custo Total (Lote)</p>
-              <p className="text-lg font-bold text-slate-700 font-mono">R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-            </div>
-            
-            <div className="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100/60 shadow-sm">
-              <p className="text-[9px] uppercase tracking-widest text-indigo-500 font-bold mb-1">Custo Unitário</p>
-              <p className="text-xl font-bold text-indigo-700 font-mono">R$ {custoUnidade.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-            </div>
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-center">
+            <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Rendimento do Lote</p>
+            <p className="text-xl font-black text-slate-900">{formula.rendimento} <span className="text-sm font-normal text-slate-500">{formula.unidade}</span></p>
           </div>
-
-          {formula.observacoes && (
-            <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100">
-              <h4 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                Observações
-              </h4>
-              <p className="text-xs text-slate-600 leading-relaxed">{formula.observacoes}</p>
-            </div>
-          )}
         </div>
 
-        {/* Coluna Direita: Tabela de Insumos (65%) */}
-        <div className="w-[65%]">
-          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-3 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-            Composição da Fórmula
-          </h3>
-          
-          <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200">
-                  <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500">Insumo</th>
-                  <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">Qtd</th>
-                  <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">%</th>
-                  <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">Custo Un.</th>
-                  <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">Subtotal</th>
-                  <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">Check</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {formula.insumos.map(insumo => (
-                  <tr key={insumo.id} className="bg-white">
+        {/* Resumo de Custos */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-[9px] uppercase tracking-widest text-slate-400 font-bold mb-1">Custo Total (Lote)</p>
+            <p className="text-lg font-bold text-slate-700">R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          </div>
+          <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+            <p className="text-[9px] uppercase tracking-widest text-blue-500 font-bold mb-1">Custo Unitário</p>
+            <p className="text-lg font-bold text-blue-700">R$ {custoUnidade.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-[9px] uppercase tracking-widest text-slate-400 font-bold mb-1">Total de Insumos</p>
+            <p className="text-lg font-bold text-slate-700">{formula.insumos.length} itens</p>
+          </div>
+        </div>
+
+        {/* Tabela de Composição */}
+        <div>
+          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-3 border-l-4 border-blue-600 pl-2">Composição da Fórmula</h3>
+          <table className="w-full text-left border-collapse border border-slate-200 rounded-lg overflow-hidden">
+            <thead>
+              <tr className="bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-600 border-b border-slate-200">
+                <th className="px-4 py-3">Insumo</th>
+                <th className="px-4 py-3 text-center">Quantidade</th>
+                <th className="px-4 py-3 text-center">Unidade</th>
+                <th className="px-4 py-3 text-center">% Composição</th>
+                <th className="px-4 py-3 text-center">Custo Unit.</th>
+                <th className="px-4 py-3 text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {formula.insumos.map(insumo => {
+                const percOriginal = insumo.quimico && totalChemicalOriginal > 0 ? (insumo.quantidade / totalChemicalOriginal) * 100 : 0;
+
+                return (
+                  <tr key={insumo.id} className="text-xs">
                     <td className="px-4 py-3">
-                      <p className="text-xs font-semibold text-slate-700">{insumo.nome}</p>
-                      {insumo.quimico && <span className="inline-block mt-0.5 text-[8px] font-bold text-indigo-400 uppercase tracking-wider">Químico</span>}
+                      <p className="font-bold text-slate-800">{insumo.nome}</p>
+                      {insumo.quimico && <span className="text-[8px] font-bold text-blue-500 uppercase tracking-tighter">Componente Químico</span>}
                     </td>
-                    <td className="px-4 py-3 text-center font-mono text-slate-600 text-xs">
-                      {insumo.quantidade.toLocaleString('pt-BR', { minimumFractionDigits: 3 })} <span className="text-[9px] text-slate-400">{insumo.unidade.toUpperCase()}</span>
+                    <td className="px-4 py-3 text-center font-mono">{insumo.quantidade.toLocaleString('pt-BR', { minimumFractionDigits: 3 })}</td>
+                    <td className="px-4 py-3 text-center text-slate-500">{insumo.unidade.toUpperCase()}</td>
+                    <td className="px-4 py-3 text-center text-slate-500 font-mono">
+                      {insumo.quimico ? `${percOriginal.toFixed(2)}%` : '-'}
                     </td>
-                    <td className="px-4 py-3 text-center font-mono text-slate-500 text-[10px]">
-                      {insumo.quimico && totalQuimico > 0 
-                        ? `${((insumo.quantidade / totalQuimico) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
-                        : '-'
-                      }
-                    </td>
-                    <td className="px-4 py-3 text-center font-mono text-slate-400 text-[10px]">
-                      R$ {insumo.valorUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-4 py-3 text-center font-mono font-semibold text-slate-700 text-xs">
-                      R$ {(insumo.quantidade * insumo.valorUnitario).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="w-4 h-4 rounded border border-slate-300 mx-auto"></div>
-                    </td>
+                    <td className="px-4 py-3 text-center text-slate-400">R$ {insumo.valorUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-4 py-3 text-right font-bold text-slate-700">R$ {(insumo.quantidade * insumo.valorUnitario).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-slate-50/80 border-t border-slate-200">
-                  <td colSpan={4} className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500 text-right">Custo Total da Mistura</td>
-                  <td colSpan={2} className="px-4 py-3 text-center font-mono font-bold text-slate-800 text-sm">
-                    R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="bg-slate-50 font-bold border-t-2 border-slate-200">
+                <td colSpan={5} className="px-4 py-3 text-right text-[10px] uppercase tracking-widest text-slate-500">Total da Mistura</td>
+                <td className="px-4 py-3 text-right text-blue-700">R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
 
+        {/* Observações */}
+        {formula.observacoes && (
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Observações Técnicas</h4>
+            <p className="text-xs text-slate-600 leading-relaxed">{formula.observacoes}</p>
+          </div>
+        )}
       </div>
     </ReportTemplate>
   );

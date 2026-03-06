@@ -1,31 +1,36 @@
 import React from 'react';
 import { Pedido } from '../Vendas';
+import { ReportTemplate } from './ReportTemplate';
 
 interface VendaReportProps {
   pedido: Pedido;
+  companyName?: string;
+  companyLogo?: string;
+  config?: any;
 }
 
-export const VendaReport: React.FC<VendaReportProps> = ({ pedido }) => {
+export const VendaReport: React.FC<VendaReportProps> = ({ pedido, companyName, companyLogo, config }) => {
+  const isOrcamento = pedido.tipo === 'orcamento';
+  const title = isOrcamento ? 'Orçamento' : 'Pedido de Venda';
+
   return (
-    <div className="bg-white p-8 max-w-4xl mx-auto text-gray-900" style={{ fontFamily: 'Arial, sans-serif' }}>
-      {/* Header */}
-      <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold uppercase tracking-wider mb-2">
-            {pedido.tipo === 'venda' ? 'Pedido de Venda' : 'Orçamento'}
-          </h1>
-          <p className="text-gray-600 text-sm">Nº {pedido.numero || pedido.id.slice(0, 8).toUpperCase()}</p>
-          <p className="text-gray-600 text-sm">Data: {new Date(pedido.createdAt).toLocaleDateString('pt-BR')}</p>
-        </div>
-        <div className="text-right">
-          <div className="inline-block px-4 py-2 border-2 border-gray-800 rounded-lg">
-            <p className="text-sm font-bold uppercase text-gray-500 mb-1">Tipo de Entrega</p>
-            <p className="text-lg font-bold">
-              {pedido.tipoEntrega === 'retirada' ? 'RETIRADA NO LOCAL' : 'ENTREGA'}
-            </p>
+    <ReportTemplate title={title} companyName={companyName} companyLogo={companyLogo} config={config}>
+      <div className="space-y-8" style={{ fontFamily: 'Arial, sans-serif' }}>
+        {/* Header Info */}
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <p className="text-gray-600 text-sm font-bold">Nº {pedido.numero || pedido.id.slice(0, 8).toUpperCase()}</p>
+            <p className="text-gray-600 text-sm">Data: {new Date(pedido.createdAt).toLocaleDateString('pt-BR')}</p>
+          </div>
+          <div className="text-right flex flex-col items-end gap-4">
+            <div className="inline-block px-4 py-2 border-2 border-gray-800 rounded-lg">
+              <p className="text-sm font-bold uppercase text-gray-500 mb-1">Tipo de Entrega</p>
+              <p className="text-lg font-bold">
+                {pedido.tipoEntrega === 'retirada' ? 'RETIRADA NO LOCAL' : 'ENTREGA'}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Info Grid */}
       <div className="grid grid-cols-2 gap-8 mb-8">
@@ -107,11 +112,7 @@ export const VendaReport: React.FC<VendaReportProps> = ({ pedido }) => {
           />
         </div>
       )}
-
-      {/* Footer */}
-      <div className="mt-16 pt-8 border-t border-gray-200 text-center text-xs text-gray-500">
-        <p>Documento gerado em {new Date().toLocaleString('pt-BR')}</p>
       </div>
-    </div>
+    </ReportTemplate>
   );
 };

@@ -10,6 +10,7 @@ import {
 
   Filter,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Modal } from './Modal';
 import { CurrencyInput } from './ui/CurrencyInput';
 
@@ -235,7 +236,24 @@ export function Estoque({ produtos, setProdutos, movimentos }: EstoqueProps) {
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <motion.div
+                animate={activeTab === tab.id ? { 
+                  scale: [1, 1.2, 1],
+                  rotate: [0, -10, 10, 0]
+                } : { 
+                  scale: 1, 
+                  rotate: 0 
+                }}
+                transition={activeTab === tab.id ? { 
+                  duration: 2, 
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                } : { 
+                  duration: 0.3 
+                }}
+              >
+                <Icon className="w-4 h-4" />
+              </motion.div>
               {tab.label}
             </button>
           );

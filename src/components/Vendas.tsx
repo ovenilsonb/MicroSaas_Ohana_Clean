@@ -5,7 +5,6 @@ import {
   Eye,
   Edit2,
   Trash2,
-  Printer,
   FileText,
   ShoppingCart,
   CheckCircle,
@@ -14,14 +13,14 @@ import {
   ChevronDown,
   X,
 } from 'lucide-react';
-import { Formula } from '../types';
+import { motion } from 'framer-motion';
+import { Formula, Insumo, InsumoMovimentacao } from '../types';
+import { ProdutoEstoque, MovimentoEstoque } from './Estoque';
+import { OrdemProducao } from './Producao';
 import { formulasData } from '../data/mockData';
 import { Modal } from './Modal';
 import { CurrencyInput } from './ui/CurrencyInput';
 import { RichTextEditor } from './ui/RichTextEditor';
-import { PrintPreviewModal } from './reports/PrintPreviewModal';
-import { VendaReport } from './reports/VendaReport';
-import { printComponent } from '../utils/printUtils';
 
 
 
@@ -120,6 +119,14 @@ interface VendasProps {
   listasPreco?: ListaPreco[];
   precificacoes?: Record<string, Precificacao>;
   canAdd?: boolean;
+  produtosEstoque?: ProdutoEstoque[];
+  setProdutosEstoque?: React.Dispatch<React.SetStateAction<ProdutoEstoque[]>>;
+  insumos?: Insumo[];
+  setInsumos?: React.Dispatch<React.SetStateAction<Insumo[]>>;
+  formulas?: Formula[];
+  ordensProducao?: OrdemProducao[];
+  setOrdensProducao?: React.Dispatch<React.SetStateAction<OrdemProducao[]>>;
+  setMovimentosEstoque?: React.Dispatch<React.SetStateAction<MovimentoEstoque[]>>;
 }
 
 type TabType = 'vendas' | 'orcamentos';
@@ -133,6 +140,13 @@ export function Vendas({
   listasPreco = [], 
   precificacoes = {},
   canAdd = true,
+  produtosEstoque = [],
+  setProdutosEstoque,
+  insumos = [],
+  setInsumos,
+  formulas = [],
+  setOrdensProducao,
+  setMovimentosEstoque,
 }: VendasProps) {
   const [activeTab, setActiveTab] = useState<TabType>('vendas');
   const [searchTerm, setSearchTerm] = useState('');
@@ -142,6 +156,10 @@ export function Vendas({
   const [editingPedido, setEditingPedido] = useState<Pedido | null>(null);
   const [selectedPedido, setSelectedPedido] = useState<Pedido | null>(null);
   
+  type ValidationStep = 'idle' | 'checking_estoque' | 'checking_insumos' | 'decision';
+  const [validationStep, setValidationStep] = useState<ValidationStep>('idle');
+  const [validationData, setValidationData] = useState<any>(null);
+
   // Autocomplete de clientes
   const [clienteSearch, setClienteSearch] = useState('');
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
@@ -175,14 +193,6 @@ export function Vendas({
   const [selectedFormulaId, setSelectedFormulaId] = useState('');
   const [itemQuantidade, setItemQuantidade] = useState(1);
   const [itemPreco, setItemPreco] = useState(0);
-  const [printPreviewData, setPrintPreviewData] = useState<Pedido | null>(null);
-
-  const handlePrint = () => {
-    const reportElement = document.getElementById('print-preview-content');
-    if (reportElement) {
-      printComponent(reportElement.innerHTML);
-    }
-  };
   
   // Clientes filtrados pelo autocomplete
   const filteredClientes = clientes.filter(c => 
@@ -405,29 +415,314 @@ export function Vendas({
       setForm(prev => ({ ...prev, clienteId: novoCliente.id }));
     }
 
-    if (editingPedido) {
-      setPedidos(prev => prev.map(p =>
-        p.id === editingPedido.id
-          ? { ...p, ...form, updatedAt: now } as Pedido
-          : p
-      ));
-    } else {
-      const newPedido: Pedido = {
-        ...form as Pedido,
-        id: Date.now().toString(),
-        numero: `${form.tipo === 'venda' ? 'VND' : 'ORC'}-${Date.now().toString().slice(-6)}`,
-        createdAt: now,
-        updatedAt: now,
-      };
-      setPedidos(prev => [...prev, newPedido]);
+    const pedidoId = editingPedido ? editingPedido.id : Date.now().toString();
+    const numero = editingPedido ? editingPedido.numero : `${form.tipo === 'venda' ? 'VND' : 'ORC'}-${Date.now().toString().slice(-6)}`;
+    
+    const pedidoToSave: Pedido = {
+      ...form as Pedido,
+      id: pedidoId,
+      numero,
+      createdAt: editingPedido ? editingPedido.createdAt : now,
+      updatedAt: now,
+    };
+
+    if (pedidoToSave.tipo === 'venda' && !editingPedido) {
+      // Start validation flow
+      setValidationData({ pedido: pedidoToSave });
+      setValidationStep('checking_estoque');
+      checkEstoqueAcabado(pedidoToSave);
+      return; // Don't save yet
     }
 
+    savePedidoFinal(pedidoToSave);
+  };
+
+  const savePedidoFinal = (pedido: Pedido) => {
+    if (editingPedido) {
+      setPedidos(prev => prev.map(p => p.id === pedido.id ? pedido : p));
+    } else {
+      setPedidos(prev => [...prev, pedido]);
+    }
     setShowModal(false);
-    
-    // Resetar estados do autocomplete
     setClienteSearch('');
     setSelectedClienteId(null);
     setSelectedListaPrecoId('');
+    setValidationStep('idle');
+  };
+
+  const checkEstoqueAcabado = (pedido: Pedido) => {
+    let hasDeficit = false;
+    const itemDeficits: { item: PedidoItem, deficit: number, estoqueAtual: number }[] = [];
+
+    for (const item of pedido.items) {
+      const estoqueProduto = produtosEstoque.filter(p => p.formulaId === item.formulaId).reduce((sum, p) => sum + p.quantidade, 0);
+      if (estoqueProduto < item.quantidade) {
+        hasDeficit = true;
+        itemDeficits.push({ item, deficit: item.quantidade - estoqueProduto, estoqueAtual: estoqueProduto });
+      }
+    }
+
+    if (!hasDeficit) {
+      approveSaleAndDeductStock(pedido);
+    } else {
+      setValidationStep('checking_insumos');
+      checkProductionPossibility(pedido, itemDeficits);
+    }
+  };
+
+  const approveSaleAndDeductStock = (pedido: Pedido) => {
+    if (setProdutosEstoque) {
+      setProdutosEstoque(prev => {
+        let newEstoque = [...prev];
+        for (const item of pedido.items) {
+          let remainingToDeduct = item.quantidade;
+          const lotesProduto = newEstoque.filter(p => p.formulaId === item.formulaId).sort((a, b) => new Date(a.ultimaEntrada || '').getTime() - new Date(b.ultimaEntrada || '').getTime());
+          
+          for (const lote of lotesProduto) {
+            if (remainingToDeduct <= 0) break;
+            const deduct = Math.min(lote.quantidade, remainingToDeduct);
+            lote.quantidade -= deduct;
+            remainingToDeduct -= deduct;
+          }
+        }
+        return newEstoque.filter(p => p.quantidade > 0);
+      });
+    }
+
+    if (setMovimentosEstoque) {
+      const novosMovimentos: MovimentoEstoque[] = pedido.items.map(item => ({
+        id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+        tipo: 'saida',
+        produtoId: produtosEstoque.find(p => p.formulaId === item.formulaId)?.id || '',
+        produtoNome: item.nome,
+        quantidade: item.quantidade,
+        motivo: 'Venda',
+        referencia: pedido.numero,
+        createdAt: new Date().toISOString(),
+      }));
+      setMovimentosEstoque(prev => [...prev, ...novosMovimentos]);
+    }
+
+    const finalPedido = { ...pedido, status: 'aprovado' as const };
+    savePedidoFinal(finalPedido);
+    alert('Venda aprovada e estoque atualizado com sucesso!');
+  };
+
+  const checkProductionPossibility = (pedido: Pedido, itemDeficits: any[]) => {
+    const requiredInsumos: Record<string, number> = {};
+    
+    for (const deficitInfo of itemDeficits) {
+      const formula = formulas.find(f => f.id === deficitInfo.item.formulaId);
+      if (!formula || formula.rendimento <= 0) continue;
+      
+      const batchesRequired = deficitInfo.deficit / formula.rendimento;
+      
+      for (const insumo of formula.insumos) {
+        if (!requiredInsumos[insumo.insumoId]) {
+          requiredInsumos[insumo.insumoId] = 0;
+        }
+        requiredInsumos[insumo.insumoId] += insumo.quantidade * batchesRequired;
+      }
+    }
+
+    const missingInsumos: { insumoId: string, nome: string, required: number, available: number }[] = [];
+    
+    for (const [insumoId, requiredQty] of Object.entries(requiredInsumos)) {
+      const insumo = insumos.find(i => i.id === insumoId);
+      const available = insumo?.estoque || 0;
+      if (available < requiredQty) {
+        missingInsumos.push({
+          insumoId,
+          nome: insumo?.nome || 'Insumo Desconhecido',
+          required: requiredQty,
+          available
+        });
+      }
+    }
+
+    if (missingInsumos.length === 0) {
+      createProductionOrdersAndDeductInsumos(pedido, itemDeficits, requiredInsumos);
+    } else {
+      setValidationData({ pedido, itemDeficits, missingInsumos });
+      setValidationStep('decision');
+    }
+  };
+
+  const createProductionOrdersAndDeductInsumos = (pedido: Pedido, itemDeficits: any[], requiredInsumos: Record<string, number>) => {
+    if (setInsumos) {
+      setInsumos(prev => prev.map(insumo => {
+        const required = requiredInsumos[insumo.id];
+        if (required) {
+          // Add movement log for insumo
+          const newMovimentacao: InsumoMovimentacao = {
+            id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+            insumoId: insumo.id,
+            tipo: 'saida',
+            data: new Date().toISOString().split('T')[0],
+            quantidade: required,
+            saldoAtual: Math.max(0, insumo.estoque - required),
+            motivo: 'consumo',
+            destino: 'Produção',
+            pedido: pedido.numero,
+            responsavel: 'Sistema',
+            usuario: 'Sistema',
+            observacoes: `Reserva automática para OP do pedido ${pedido.numero}`,
+          };
+          return { 
+            ...insumo, 
+            estoque: Math.max(0, insumo.estoque - required),
+            movimentacoes: [...(insumo.movimentacoes || []), newMovimentacao]
+          };
+        }
+        return insumo;
+      }));
+    }
+
+    if (setOrdensProducao) {
+      const now = new Date().toISOString();
+      const newOrders: OrdemProducao[] = itemDeficits.map((deficitInfo, index) => ({
+        id: `OP-${Date.now()}-${index}`,
+        numero: `OP-${Date.now().toString().slice(-6)}-${index + 1}`,
+        pedidoId: pedido.id,
+        pedidoNumero: pedido.numero,
+        cliente: pedido.cliente,
+        formulaId: deficitInfo.item.formulaId,
+        formulaNome: deficitInfo.item.nome,
+        quantidade: deficitInfo.deficit,
+        lote: `LOTE-${Date.now().toString().slice(-6)}`,
+        status: 'aguardando',
+        prioridade: 'alta',
+        observacoes: `Criado automaticamente a partir do pedido ${pedido.numero}`,
+        createdAt: now,
+        updatedAt: now,
+      }));
+      setOrdensProducao(prev => [...prev, ...newOrders]);
+    }
+
+    if (setProdutosEstoque) {
+      setProdutosEstoque(prev => {
+        let newEstoque = [...prev];
+        for (const deficitInfo of itemDeficits) {
+          let remainingToDeduct = deficitInfo.estoqueAtual;
+          if (remainingToDeduct <= 0) continue;
+          
+          const lotesProduto = newEstoque.filter(p => p.formulaId === deficitInfo.item.formulaId).sort((a, b) => new Date(a.ultimaEntrada || '').getTime() - new Date(b.ultimaEntrada || '').getTime());
+          
+          for (const lote of lotesProduto) {
+            if (remainingToDeduct <= 0) break;
+            const deduct = Math.min(lote.quantidade, remainingToDeduct);
+            lote.quantidade -= deduct;
+            remainingToDeduct -= deduct;
+          }
+        }
+        return newEstoque.filter(p => p.quantidade > 0);
+      });
+    }
+
+    if (setMovimentosEstoque) {
+      const novosMovimentos: MovimentoEstoque[] = itemDeficits
+        .filter(d => d.estoqueAtual > 0)
+        .map(deficitInfo => ({
+          id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+          tipo: 'saida',
+          produtoId: produtosEstoque.find(p => p.formulaId === deficitInfo.item.formulaId)?.id || '',
+          produtoNome: deficitInfo.item.nome,
+          quantidade: deficitInfo.estoqueAtual,
+          motivo: 'Venda',
+          referencia: pedido.numero,
+          createdAt: new Date().toISOString(),
+        }));
+      if (novosMovimentos.length > 0) {
+        setMovimentosEstoque(prev => [...prev, ...novosMovimentos]);
+      }
+    }
+
+    const finalPedido = { ...pedido, status: 'producao' as const };
+    savePedidoFinal(finalPedido);
+    alert('Venda registrada! Ordens de produção criadas para o déficit e insumos reservados.');
+  };
+
+  const handleDecision = (action: 'parcial' | 'pendente' | 'cancelar') => {
+    const { pedido, itemDeficits } = validationData;
+
+    if (action === 'cancelar') {
+      setValidationStep('idle');
+      return;
+    }
+
+    if (action === 'pendente') {
+      const finalPedido = { ...pedido, status: 'pendente' as const, observacoes: `${pedido.observacoes}\n[SISTEMA] Pedido pendente por falta de insumos.` };
+      savePedidoFinal(finalPedido);
+      alert('Pedido salvo como pendente. Alerta de reposição de insumos gerado.');
+      return;
+    }
+
+    if (action === 'parcial') {
+      const newItems = pedido.items.map((item: PedidoItem) => {
+        const deficitInfo = itemDeficits.find((d: any) => d.item.id === item.id);
+        if (deficitInfo) {
+          return {
+            ...item,
+            quantidade: deficitInfo.estoqueAtual,
+            total: deficitInfo.estoqueAtual * item.precoUnitario
+          };
+        }
+        return item;
+      }).filter((item: PedidoItem) => item.quantidade > 0);
+
+      if (newItems.length === 0) {
+        alert('Não há estoque disponível para nenhum dos itens. Pedido cancelado.');
+        setValidationStep('idle');
+        return;
+      }
+
+      const subtotal = newItems.reduce((sum: number, i: PedidoItem) => sum + i.total, 0);
+      const totalFinal = subtotal - (pedido.desconto || 0);
+
+      const finalPedido = {
+        ...pedido,
+        items: newItems,
+        subtotal,
+        total: totalFinal,
+        status: 'aprovado' as const,
+        observacoes: `${pedido.observacoes}\n[SISTEMA] Venda parcial realizada devido à falta de insumos para produção.`
+      };
+
+      if (setProdutosEstoque) {
+        setProdutosEstoque(prev => {
+          let newEstoque = [...prev];
+          for (const item of newItems) {
+            let remainingToDeduct = item.quantidade;
+            const lotesProduto = newEstoque.filter(p => p.formulaId === item.formulaId).sort((a, b) => new Date(a.ultimaEntrada || '').getTime() - new Date(b.ultimaEntrada || '').getTime());
+            
+            for (const lote of lotesProduto) {
+              if (remainingToDeduct <= 0) break;
+              const deduct = Math.min(lote.quantidade, remainingToDeduct);
+              lote.quantidade -= deduct;
+              remainingToDeduct -= deduct;
+            }
+          }
+          return newEstoque.filter(p => p.quantidade > 0);
+        });
+      }
+
+      if (setMovimentosEstoque) {
+        const novosMovimentos: MovimentoEstoque[] = newItems.map((item: PedidoItem) => ({
+          id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+          tipo: 'saida',
+          produtoId: produtosEstoque.find(p => p.formulaId === item.formulaId)?.id || '',
+          produtoNome: item.nome,
+          quantidade: item.quantidade,
+          motivo: 'Venda',
+          referencia: pedido.numero,
+          createdAt: new Date().toISOString(),
+        }));
+        setMovimentosEstoque(prev => [...prev, ...novosMovimentos]);
+      }
+
+      savePedidoFinal(finalPedido);
+      alert('Venda parcial concluída com o estoque disponível!');
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -527,7 +822,24 @@ export function Vendas({
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <motion.div
+                animate={activeTab === tab.id ? { 
+                  scale: [1, 1.2, 1],
+                  rotate: [0, -10, 10, 0]
+                } : { 
+                  scale: 1, 
+                  rotate: 0 
+                }}
+                transition={activeTab === tab.id ? { 
+                  duration: 2, 
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                } : { 
+                  duration: 0.3 
+                }}
+              >
+                <Icon className="w-4 h-4" />
+              </motion.div>
               {tab.label}
               <span className={`px-2 py-0.5 rounded-full text-xs ${
                 activeTab === tab.id
@@ -934,6 +1246,76 @@ export function Vendas({
         </div>
       </Modal>
 
+      {/* Modal: Validation Decision */}
+      <Modal
+        isOpen={validationStep === 'decision'}
+        onClose={() => setValidationStep('idle')}
+        title="Estoque Insuficiente para Produção"
+        size="lg"
+      >
+        <div className="space-y-6">
+          <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-100 dark:border-red-800">
+            <h4 className="text-red-800 dark:text-red-400 font-medium mb-2">Faltam Insumos para Produzir o Déficit</h4>
+            <p className="text-sm text-red-700 dark:text-red-300 mb-4">
+              Não há estoque de produto acabado suficiente, e também não há insumos suficientes para produzir a quantidade necessária.
+            </p>
+            <ul className="space-y-1 text-sm text-red-700 dark:text-red-300">
+              {validationData?.missingInsumos?.map((missing: any) => (
+                <li key={missing.insumoId} className="flex justify-between">
+                  <span>{missing.nome}</span>
+                  <span className="font-medium">
+                    Necessário: {missing.required.toFixed(2)} | Disponível: {missing.available.toFixed(2)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="font-medium text-gray-900 dark:text-white">Como deseja prosseguir?</h4>
+            
+            <button
+              onClick={() => handleDecision('parcial')}
+              className="w-full flex items-start gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800 transition-colors text-left"
+            >
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg text-blue-600 dark:text-blue-400">
+                <ShoppingCart className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">Venda Parcial</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Vender apenas a quantidade disponível em estoque de produto acabado.</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleDecision('pendente')}
+              className="w-full flex items-start gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:border-amber-200 dark:hover:border-amber-800 transition-colors text-left"
+            >
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg text-amber-600 dark:text-amber-400">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">Deixar Pendente</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Salvar o pedido como pendente e gerar alerta para compra de insumos.</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleDecision('cancelar')}
+              className="w-full flex items-start gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 transition-colors text-left"
+            >
+              <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-lg text-red-600 dark:text-red-400">
+                <XCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">Cancelar Venda</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Não registrar o pedido de venda.</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Modal: View */}
       <Modal
         isOpen={showViewModal}
@@ -951,13 +1333,6 @@ export function Vendas({
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setPrintPreviewData(selectedPedido)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm font-medium"
-                >
-                  <Printer className="w-4 h-4" />
-                  Imprimir
-                </button>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {new Date(selectedPedido.createdAt).toLocaleString('pt-BR')}
                 </p>
@@ -1035,16 +1410,6 @@ export function Vendas({
           </div>
         )}
       </Modal>
-
-      {/* Print Preview Modal */}
-      <PrintPreviewModal
-        isOpen={!!printPreviewData}
-        onClose={() => setPrintPreviewData(null)}
-        onPrint={handlePrint}
-        title={`Pré-visualização do ${printPreviewData?.tipo === 'venda' ? 'Pedido de Venda' : 'Orçamento'}`}
-      >
-        {printPreviewData && <VendaReport pedido={printPreviewData} />}
-      </PrintPreviewModal>
 
     </div>
   );

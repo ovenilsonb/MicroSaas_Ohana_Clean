@@ -143,16 +143,23 @@ export function Producao({ ordensProducao, setOrdensProducao, pedidos: _pedidos,
       updatedAt: now,
     };
 
-    setOrdensProducao(prev => prev.map(o =>
-      o.id === ordem.id ? ordemConcluida : o
-    ));
-
-    // Atualiza status do pedido para concluído
-    setPedidos(prev => prev.map(p =>
-      p.id === ordem.pedidoId
-        ? { ...p, status: 'concluido', updatedAt: now }
-        : p
-    ));
+    setOrdensProducao(prev => {
+      const newOrdens = prev.map(o => o.id === ordem.id ? ordemConcluida : o);
+      
+      // Check if all orders for this pedido are completed
+      const allOrdersForPedido = newOrdens.filter(o => o.pedidoId === ordem.pedidoId);
+      const allCompleted = allOrdersForPedido.every(o => o.status === 'concluido');
+      
+      if (allCompleted) {
+        setPedidos(pedidosPrev => pedidosPrev.map(p =>
+          p.id === ordem.pedidoId
+            ? { ...p, status: 'concluido', updatedAt: now, observacoes: `${p.observacoes}\n[SISTEMA] Produção finalizada e venda concluída em ${new Date().toLocaleDateString('pt-BR')}.` }
+            : p
+        ));
+      }
+      
+      return newOrdens;
+    });
 
     // Envia para estoque
     onConcluirProducao(ordemConcluida);

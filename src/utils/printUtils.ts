@@ -26,6 +26,7 @@ export const printComponent = (htmlContent: string) => {
             </div>
             <script>
               window.onload = () => {
+                window.focus();
                 setTimeout(() => {
                   window.print();
                   setTimeout(() => {

@@ -9,6 +9,7 @@ import { Vendas, Pedido } from './components/Vendas';
 import { Producao, OrdemProducao } from './components/Producao';
 import { Estoque, ProdutoEstoque, MovimentoEstoque } from './components/Estoque';
 import Clientes from './components/Clientes';
+import { Relatorios } from './components/Relatorios';
 import { Anotacoes } from './components/Anotacoes';
 import { Modal } from './components/Modal';
 import { Login } from './components/Login';
@@ -19,6 +20,7 @@ import {
   Upload,
   Camera,
   Key,
+  Link,
   Mail as MailIcon,
   User as UserIcon,
   Briefcase,
@@ -95,6 +97,9 @@ interface PrecificacaoData {
   updatedAt: string;
 }
 
+import { ReportConfig } from './components/ReportConfig';
+import { ReportTemplateConfig, ReportAssignments } from './types';
+
 export function App() {
   const { isDark } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
@@ -102,7 +107,7 @@ export function App() {
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
-  const [configTab, setConfigTab] = useState<'aparencia' | 'backup' | 'banco' | 'historico'>('aparencia');
+  const [configTab, setConfigTab] = useState<'aparencia' | 'backup' | 'banco' | 'historico' | 'relatorios'>('aparencia');
   
   const [userName, setUserName] = useState('Administrador');
   const [userPhoto, setUserPhoto] = useState<string | undefined>();
@@ -110,6 +115,24 @@ export function App() {
   // Configurações da Empresa
   const [companyName, setCompanyName] = useState(() => localStorage.getItem('ohana_company_name') || 'Ohana Clean');
   const [companyLogo, setCompanyLogo] = useState(() => localStorage.getItem('ohana_company_logo') || '');
+
+  // Configurações de Relatórios
+  const [reportTemplates, setReportTemplates] = useState<ReportTemplateConfig[]>(() => {
+    const saved = localStorage.getItem('ohana_report_templates');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [reportAssignments, setReportAssignments] = useState<ReportAssignments>(() => {
+    const saved = localStorage.getItem('ohana_report_assignments');
+    return saved ? JSON.parse(saved) : { formula: '', proportion: '', pricing: '', venda: '' };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ohana_report_templates', JSON.stringify(reportTemplates));
+  }, [reportTemplates]);
+
+  useEffect(() => {
+    localStorage.setItem('ohana_report_assignments', JSON.stringify(reportAssignments));
+  }, [reportAssignments]);
   
   // Auth
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -371,6 +394,8 @@ export function App() {
     // Verifica se o produto já existe no estoque
     const produtoExistente = produtosEstoque.find(p => p.formulaId === ordem.formulaId);
     
+    let newProdutoId = produtoExistente?.id || Date.now().toString();
+
     if (produtoExistente) {
       // Atualiza quantidade
       setProdutosEstoque(prev => prev.map(p =>
@@ -385,7 +410,7 @@ export function App() {
     } else {
       // Cria novo produto no estoque
       const novoProduto: ProdutoEstoque = {
-        id: Date.now().toString(),
+        id: newProdutoId,
         formulaId: ordem.formulaId,
         nome: ordem.formulaNome,
         codigo: formula?.codigo || `PRD-${Date.now()}`,
@@ -398,17 +423,43 @@ export function App() {
     }
 
     // Registra movimento de entrada
-    const movimento: MovimentoEstoque = {
+    const movimentoEntrada: MovimentoEstoque = {
       id: Date.now().toString(),
       tipo: 'entrada',
-      produtoId: produtoExistente?.id || Date.now().toString(),
+      produtoId: newProdutoId,
       produtoNome: ordem.formulaNome,
       quantidade: ordem.quantidade,
       motivo: 'Produção',
-      referencia: ordem.numero,
+      referencia: ordem.numero || ordem.id,
       createdAt: now,
     };
-    setMovimentosEstoque(prev => [...prev, movimento]);
+    setMovimentosEstoque(prev => [...prev, movimentoEntrada]);
+
+    // Check if this order is linked to a pending sale
+    if (ordem.pedidoId) {
+      const pedido = pedidos.find(p => p.id === ordem.pedidoId);
+      if (pedido && pedido.status === 'producao') {
+        // Deduct the produced amount from inventory for this sale
+        setProdutosEstoque(prev => prev.map(p => 
+          p.id === newProdutoId 
+            ? { ...p, quantidade: Math.max(0, p.quantidade - ordem.quantidade) }
+            : p
+        ));
+
+        // Registra movimento de saída para a venda
+        const movimentoSaida: MovimentoEstoque = {
+          id: (Date.now() + 1).toString(),
+          tipo: 'saida',
+          produtoId: newProdutoId,
+          produtoNome: ordem.formulaNome,
+          quantidade: ordem.quantidade,
+          motivo: 'Venda',
+          referencia: pedido.numero,
+          createdAt: now,
+        };
+        setMovimentosEstoque(prev => [...prev, movimentoSaida]);
+      }
+    }
   };
 
   // ============== HANDLERS ==============
@@ -532,11 +583,12 @@ export function App() {
       case 'precificacao':
         return (
           <Precificacao 
+            formulas={formulas}
+            insumosData={insumos}
+            precificacoes={precificacoes}
+            setPrecificacoes={setPrecificacoes}
             listasPreco={listasPreco}
             setListasPreco={setListasPreco}
-            precificacoes={precificacoes}
-            companyName={companyName}
-            companyLogo={companyLogo}
           />
         );
       case 'clientes':
@@ -560,6 +612,14 @@ export function App() {
             listasPreco={listasPreco}
             precificacoes={precificacoes}
             canAdd={checkLimit('relatorios', pedidos.length)}
+            produtosEstoque={produtosEstoque}
+            setProdutosEstoque={setProdutosEstoque}
+            insumos={insumos}
+            setInsumos={setInsumos}
+            formulas={formulas}
+            ordensProducao={ordensProducao}
+            setOrdensProducao={setOrdensProducao}
+            setMovimentosEstoque={setMovimentosEstoque}
           />
         );
       case 'producao':
@@ -587,6 +647,20 @@ export function App() {
         );
       case 'anotacoes':
         return <Anotacoes />;
+      case 'relatorios':
+        return (
+          <Relatorios 
+            formulas={formulas}
+            insumos={insumos}
+            pedidos={pedidos}
+            clientes={clientes}
+            precificacoes={precificacoes}
+            companyName={companyName}
+            companyLogo={companyLogo}
+            reportTemplates={reportTemplates}
+            reportAssignments={reportAssignments}
+          />
+        );
       case 'config':
         return null;
       default:
@@ -704,18 +778,39 @@ export function App() {
                   <UserIcon className="w-12 h-12 text-gray-600" />
                 )}
               </div>
-              <button 
-                type="button"
-                className="absolute -bottom-2 -right-2 p-2 bg-blue-600 rounded-xl text-white shadow-lg hover:bg-blue-700 transition-all"
-                onClick={() => {
-                  const url = prompt('Insira a URL da imagem:');
-                  if (url) setProfileForm(prev => ({ ...prev, avatar: url }));
-                }}
-              >
-                <Camera className="w-4 h-4" />
-              </button>
+              <div className="absolute -bottom-2 -right-2 flex gap-1">
+                <label className="cursor-pointer p-2 bg-blue-600 rounded-xl text-white shadow-lg hover:bg-blue-700 transition-all">
+                  <Camera className="w-4 h-4" />
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setProfileForm(prev => ({ ...prev, avatar: reader.result as string }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </label>
+                <button 
+                  type="button"
+                  className="p-2 bg-gray-700 rounded-xl text-white shadow-lg hover:bg-gray-600 transition-all"
+                  onClick={() => {
+                    const url = prompt('Insira a URL da imagem:');
+                    if (url) setProfileForm(prev => ({ ...prev, avatar: url }));
+                  }}
+                  title="Inserir URL"
+                >
+                  <Link className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-3">Clique na câmera para alterar a foto</p>
+            <p className="text-xs text-gray-500 mt-3">Escolha um arquivo ou insira uma URL</p>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
@@ -800,7 +895,7 @@ export function App() {
         <div className="space-y-6">
           {/* Tabs */}
           <div className="flex flex-wrap gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
-            {(['aparencia', 'backup', 'banco', 'historico'] as const).map((tab) => (
+            {(['aparencia', 'relatorios', 'backup', 'banco', 'historico'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setConfigTab(tab)}
@@ -810,7 +905,7 @@ export function App() {
                     : 'text-gray-600 dark:text-gray-400'
                 }`}
               >
-                {tab === 'aparencia' ? 'Aparência' : tab === 'backup' ? 'Backup' : tab === 'banco' ? 'Banco de Dados' : 'Histórico'}
+                {tab === 'aparencia' ? 'Aparência' : tab === 'relatorios' ? 'Relatórios' : tab === 'backup' ? 'Backup' : tab === 'banco' ? 'Banco de Dados' : 'Histórico'}
               </button>
             ))}
           </div>
@@ -869,37 +964,51 @@ export function App() {
             </div>
           )}
 
+          {/* Relatórios */}
+          {configTab === 'relatorios' && (
+            <ReportConfig 
+              templates={reportTemplates}
+              setTemplates={setReportTemplates}
+              assignments={reportAssignments}
+              setAssignments={setReportAssignments}
+            />
+          )}
+
           {/* Backup */}
           {configTab === 'backup' && (
-            <div className="space-y-6">
-              <div className="p-4 sm:p-6 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-200 dark:border-blue-800">
-                <div className="flex flex-col sm:flex-row items-start gap-4">
-                  <Download className="w-8 h-8 text-blue-600 dark:text-blue-400 shrink-0" />
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 p-4 sm:p-6 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                    <Download className="w-6 h-6 text-blue-600 dark:text-blue-400 shrink-0" />
+                  </div>
                   <div className="flex-1">
                     <h4 className="font-semibold text-blue-800 dark:text-blue-300">Fazer Backup</h4>
-                    <p className="text-sm text-blue-600 dark:text-blue-400 mb-4">
-                      Baixe um arquivo com todos os dados do sistema (insumos, fórmulas, vendas, produção, estoque, clientes)
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mb-2">
+                      Baixe todos os dados do sistema
                     </p>
                     <button
                       onClick={handleBackup}
-                      className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors"
+                      className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors text-sm font-medium"
                     >
-                      Fazer Backup Agora
+                      Backup Agora
                     </button>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 sm:p-6 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-200 dark:border-amber-800">
-                <div className="flex flex-col sm:flex-row items-start gap-4">
-                  <Upload className="w-8 h-8 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="flex-1 p-4 sm:p-6 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-200 dark:border-amber-800">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-xl">
+                    <Upload className="w-6 h-6 text-amber-600 dark:text-amber-400 shrink-0" />
+                  </div>
                   <div className="flex-1">
-                    <h4 className="font-semibold text-amber-800 dark:text-amber-300">Restaurar Backup</h4>
-                    <p className="text-sm text-amber-600 dark:text-amber-400 mb-4">
-                      Restaure os dados a partir de um arquivo de backup
+                    <h4 className="font-semibold text-amber-800 dark:text-amber-300">Restaurar</h4>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
+                      Restaure dados de um arquivo
                     </p>
-                    <label className="inline-block w-full sm:w-auto text-center px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl cursor-pointer transition-colors">
-                      Selecionar Arquivo
+                    <label className="inline-block w-full text-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl cursor-pointer transition-colors text-sm font-medium">
+                      Selecionar
                       <input type="file" accept=".json" onChange={handleRestore} className="hidden" />
                     </label>
                   </div>

@@ -307,10 +307,27 @@ select:focus {
   }
   @page {
     size: A4;
-    margin: 10mm;
+    margin: 5mm; /* Margem reduzida na página */
   }
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+  
+  /* Ajustes específicos para o container do relatório na impressão */
+  .report-container {
+    padding: 0 !important; /* Remove o padding extra na impressão, pois a página já tem margem */
+    max-width: 100% !important;
+  }
+  
+  /* Compactar cabeçalho e rodapé na impressão */
+  .report-container header {
+    padding-bottom: 0.5rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  .report-container footer {
+    padding-top: 0.5rem !important;
+    margin-top: 1rem !important;
   }
 }

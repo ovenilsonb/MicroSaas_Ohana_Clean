@@ -7,9 +7,34 @@ export interface InsumoVariante {
   valorUnitario: number;
 }
 
+export interface InsumoMovimentacao {
+  id: string;
+  insumoId: string;
+  tipo: 'entrada' | 'saida';
+  data: string;
+  quantidade: number;
+  saldoAtual: number;
+  
+  // Campos de Entrada
+  fornecedor?: string;
+  lote?: string;
+  validade?: string;
+  documento?: string;
+  
+  // Campos de Saída
+  destino?: string;
+  pedido?: string;
+  responsavel?: string;
+  motivo?: string;
+  
+  observacoes?: string;
+  usuario: string;
+}
+
 export interface Insumo {
   id: string;
   nome: string;
+  apelido?: string;
   codigo: string;
   unidade: string;
   valorUnitario: number;
@@ -28,6 +53,7 @@ export interface Insumo {
   viscosidade?: string;
   solubilidade?: string;
   risco?: string;
+  movimentacoes?: InsumoMovimentacao[];
 }
 
 export interface FormulaInsumo {
@@ -206,4 +232,20 @@ export interface User {
   avatar?: string;
   role: 'admin' | 'operador' | 'visualizador';
   limits: UserLimits;
+}
+
+export interface ReportTemplateConfig {
+  id: string;
+  name: string;
+  logoSize: number;
+  headerText: string;
+  footerText: string;
+  showSeparator: boolean;
+}
+
+export interface ReportAssignments {
+  formula: string;
+  proportion: string;
+  pricing: string;
+  venda: string;
 }

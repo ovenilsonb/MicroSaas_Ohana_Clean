@@ -1,8 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FormulaReport } from './reports/FormulaReport';
-import { ProportionReport } from './reports/ProportionReport';
-import { PrintPreviewModal } from './reports/PrintPreviewModal';
-import { printComponent } from '../utils/printUtils';
 import {
   Plus,
   Search,
@@ -20,8 +16,10 @@ import {
   X,
   ChevronDown,
   Save,
-  Printer,
+  FolderTree,
+  Calculator
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Formula, FormulaInsumo, FormulaHistorico, Grupo, Insumo } from '../types';
 import { gruposData as initialGrupos } from '../data/mockData';
 import { Modal } from './Modal';
@@ -63,15 +61,6 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
   const [proportionQuantidade, setProportionQuantidade] = useState(1);
   const [proportionUnidade, setProportionUnidade] = useState<'un' | 'kg' | 'L' | 'ml'>('un');
 
-  const [printPreviewData, setPrintPreviewData] = useState<{ type: 'formula' | 'proportion', data: any } | null>(null);
-
-  const handleActualPrint = () => {
-    const reportElement = document.getElementById('print-preview-content');
-    if (reportElement) {
-      printComponent(reportElement.innerHTML);
-    }
-  };
-
   // Grupos Modal
   const [showGrupoModal, setShowGrupoModal] = useState(false);
   const [editingGrupo, setEditingGrupo] = useState<Grupo | null>(null);
@@ -97,6 +86,22 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
   const [selectedInsumoId, setSelectedInsumoId] = useState('');
   const [selectedVarianteId, setSelectedVarianteId] = useState('');
   const [insumoQuantidade, setInsumoQuantidade] = useState(0);
+  const [insumoSearch, setInsumoSearch] = useState('');
+
+  const normalizeString = (str: string) => 
+    str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  const filteredInsumosParaAdicao = useMemo(() => {
+    const sorted = [...insumos].sort((a, b) => a.nome.localeCompare(b.nome));
+    
+    if (insumoSearch.length < 4) return sorted;
+    
+    const search = normalizeString(insumoSearch);
+    return sorted.filter(i => 
+      normalizeString(i.nome).includes(search) || 
+      (i.apelido && normalizeString(i.apelido).includes(search))
+    );
+  }, [insumos, insumoSearch]);
 
 
 
@@ -392,9 +397,9 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
   }, [form.insumos]);
 
   const tabs = [
-    { id: 'formulas', label: 'Fórmulas' },
-    { id: 'grupos', label: 'Grupos' },
-    { id: 'proporcao', label: 'Proporção' },
+    { id: 'formulas', label: 'Fórmulas', icon: FlaskConical },
+    { id: 'grupos', label: 'Grupos', icon: FolderTree },
+    { id: 'proporcao', label: 'Proporção', icon: Calculator },
   ];
 
   return (
@@ -409,19 +414,40 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
 
       {/* Tabs */}
       <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as TabType)}
-            className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
-              activeTab === tab.id
-                ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as TabType)}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium transition-all ${
+                activeTab === tab.id
+                  ? 'bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              <motion.div
+                animate={activeTab === tab.id ? { 
+                  scale: [1, 1.2, 1],
+                  rotate: [0, -10, 10, 0]
+                } : { 
+                  scale: 1, 
+                  rotate: 0 
+                }}
+                transition={activeTab === tab.id ? { 
+                  duration: 2, 
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                } : { 
+                  duration: 0.3 
+                }}
+              >
+                <Icon className="w-4 h-4" />
+              </motion.div>
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab: Fórmulas */}
@@ -504,9 +530,12 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
                 return (
                   <div
                     key={formula.id}
-                    className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow"
+                    className="relative bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group overflow-hidden"
                   >
-                    <div className="flex items-start justify-between mb-3">
+                    {/* Watermark */}
+                    <FlaskConical className="absolute -right-4 -bottom-4 w-24 h-24 text-gray-100 dark:text-gray-700/30 opacity-50 group-hover:scale-110 transition-transform duration-500 pointer-events-none" />
+                    
+                    <div className="relative z-10 flex items-start justify-between mb-3">
                       <span
                         className="px-3 py-1 rounded-full text-xs font-medium text-white"
                         style={{ backgroundColor: grupo?.cor || '#6B7280' }}
@@ -572,13 +601,6 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
                         title="Excluir"
                       >
                         <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
-                      <button
-                        onClick={() => setPrintPreviewData({ type: 'formula', data: formula })}
-                        className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
-                        title="Imprimir Ficha"
-                      >
-                        <Printer size={16} />
                       </button>
                     </div>
                   </div>
@@ -663,13 +685,6 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
                             >
                               <Trash2 className="w-4 h-4 text-red-500" />
                             </button>
-                            <button
-                              onClick={() => setPrintPreviewData({ type: 'formula', data: formula })}
-                              className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
-                              title="Imprimir Ficha"
-                            >
-                              <Printer size={16} />
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -747,7 +762,6 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
           setQuantidade={setProportionQuantidade}
           unidade={proportionUnidade}
           setUnidade={setProportionUnidade}
-          onPrint={(formula) => setPrintPreviewData({ type: 'proportion', data: { formula, quantidade: proportionQuantidade, unidade: proportionUnidade } })}
         />
       )}
 
@@ -825,7 +839,19 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
 
             {/* Add Insumo */}
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl space-y-3">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Adicionar Insumo</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Adicionar Insumo</p>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar (mín. 4 letras)..."
+                    value={insumoSearch}
+                    onChange={(e) => setInsumoSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              </div>
               
                   <div className="grid grid-cols-4 gap-3">
                     {/* Select Insumo */}
@@ -838,10 +864,14 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
                         }}
                         className={`w-full px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border ${isInsumoDuplicado() ? 'border-red-500 ring-2 ring-red-500/20' : 'border-gray-200 dark:border-gray-600'} text-gray-900 dark:text-white text-sm appearance-none transition-all`}
                       >
-                        <option value="">Selecione o insumo...</option>
-                        {insumos.map((insumo) => (
+                        <option value="">
+                          {insumoSearch.length >= 4 
+                            ? `${filteredInsumosParaAdicao.length} resultados encontrados...` 
+                            : 'Selecione o insumo...'}
+                        </option>
+                        {filteredInsumosParaAdicao.map((insumo) => (
                           <option key={insumo.id} value={insumo.id}>
-                            {insumo.quimico ? '🧪' : '📦'} {insumo.nome} - R$ {insumo.valorUnitario.toFixed(2)}/{insumo.unidade.toUpperCase()}
+                            {insumo.quimico ? '🧪' : '📦'} {insumo.nome} {insumo.apelido ? `(${insumo.apelido})` : ''} - R$ {insumo.valorUnitario.toFixed(2)}/{insumo.unidade.toUpperCase()}
                           </option>
                         ))}
                       </select>
@@ -1228,23 +1258,6 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
           </div>
         </div>
       </Modal>
-
-      {/* Print Preview Modal */}
-      <PrintPreviewModal
-        isOpen={!!printPreviewData}
-        onClose={() => setPrintPreviewData(null)}
-        onPrint={handleActualPrint}
-        title={printPreviewData?.type === 'formula' ? 'Pré-visualização da Ficha Técnica' : 'Pré-visualização da Proporção'}
-      >
-        {printPreviewData?.type === 'formula' && <FormulaReport formula={printPreviewData.data} />}
-        {printPreviewData?.type === 'proportion' && (
-          <ProportionReport 
-            formula={printPreviewData.data.formula} 
-            quantidade={printPreviewData.data.quantidade} 
-            unidade={printPreviewData.data.unidade} 
-          />
-        )}
-      </PrintPreviewModal>
     </div>
   );
 }
@@ -1258,7 +1271,6 @@ interface ProporcaoTabProps {
   setQuantidade: (value: number) => void;
   unidade: 'un' | 'kg' | 'L' | 'ml';
   setUnidade: (value: 'un' | 'kg' | 'L' | 'ml') => void;
-  onPrint: (formula: Formula) => void;
 }
 
 function ProporcaoTab({ 
@@ -1268,8 +1280,7 @@ function ProporcaoTab({
   quantidade,
   setQuantidade,
   unidade,
-  setUnidade,
-  onPrint
+  setUnidade
 }: ProporcaoTabProps) {
   const [selectedFormulaId, setSelectedFormulaId] = useState('');
   const [insumosAjustados, setInsumosAjustados] = useState<Record<string, number>>({});
@@ -1653,16 +1664,6 @@ function ProporcaoTab({
 
           {/* Actions */}
           <div className="p-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-            <button
-              onClick={() => {
-                const formula = formulas.find(f => f.id === selectedFormulaId);
-                if (formula) onPrint(formula);
-              }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-xl transition-colors"
-            >
-              <Printer className="w-5 h-5" />
-              Imprimir Proporção
-            </button>
             {hasChanges && (
               <span className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
                 ⚠️ Alterações não salvas na fórmula original

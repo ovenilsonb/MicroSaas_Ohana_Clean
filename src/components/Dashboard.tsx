@@ -23,7 +23,7 @@ interface DashboardProps {
 }
 
 const AVAILABLE_BLOCKS = [
-  { id: 'kpis', title: 'Indicadores Principais (KPIs)', defaultW: 12, defaultH: 2 },
+  { id: 'kpis', title: 'Indicadores Principais', defaultW: 12, defaultH: 2 },
   { id: 'revenue', title: 'Gráfico de Receita', defaultW: 8, defaultH: 6 },
   { id: 'sales_status', title: 'Status de Vendas', defaultW: 4, defaultH: 6 },
   { id: 'top_products', title: 'Produtos Mais Vendidos', defaultW: 12, defaultH: 6 }
@@ -220,15 +220,18 @@ export function Dashboard({ darkMode, formulas = [], insumos = [], pedidos = [] 
         return (
           <div className="w-full h-full flex flex-col">
             <div className="flex items-center justify-between mb-2 drag-handle cursor-move">
-              <h3 className="font-semibold text-gray-900 dark:text-white">KPIs</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-white">Indicadores</h3>
               {isEditingLayout && <button onClick={() => toggleBlock('kpis')}><X className="w-4 h-4 text-gray-500 hover:text-red-500" /></button>}
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
               {kpis.map((kpi, index) => {
                 const Icon = kpi.icon;
                 return (
-                  <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-center">
-                    <div className="flex items-start justify-between">
+                  <div key={index} className="relative bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col justify-center overflow-hidden group">
+                    {/* Watermark */}
+                    <Icon className="absolute -right-2 -bottom-2 w-16 h-16 text-gray-100 dark:text-gray-700/30 opacity-50 group-hover:scale-110 transition-transform duration-500 pointer-events-none" />
+                    
+                    <div className="relative z-10 flex items-start justify-between">
                       <div>
                         <p className="text-xs text-gray-500 dark:text-gray-400">{kpi.title}</p>
                         <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">{kpi.value}</p>
@@ -245,8 +248,11 @@ export function Dashboard({ darkMode, formulas = [], insumos = [], pedidos = [] 
         );
       case 'revenue':
         return (
-          <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
-            <div className="flex items-center justify-between mb-4 drag-handle cursor-move">
+          <div className="relative w-full h-full flex flex-col bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden group">
+            {/* Watermark */}
+            <DollarSign className="absolute -right-4 -bottom-4 w-32 h-32 text-gray-100 dark:text-gray-700/30 opacity-50 group-hover:scale-110 transition-transform duration-500 pointer-events-none" />
+            
+            <div className="relative z-10 flex items-center justify-between mb-4 drag-handle cursor-move">
               <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <DollarSign className="w-5 h-5 text-green-500" />
                 Receita
@@ -265,7 +271,7 @@ export function Dashboard({ darkMode, formulas = [], insumos = [], pedidos = [] 
               </div>
             </div>
             <div className="flex-1 min-h-0">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <AreaChart data={revenueData}>
                   <defs>
                     <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
@@ -288,8 +294,11 @@ export function Dashboard({ darkMode, formulas = [], insumos = [], pedidos = [] 
         );
       case 'sales_status':
         return (
-          <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
-            <div className="flex items-center justify-between mb-4 drag-handle cursor-move">
+          <div className="relative w-full h-full flex flex-col bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden group">
+            {/* Watermark */}
+            <ShoppingCart className="absolute -right-4 -bottom-4 w-32 h-32 text-gray-100 dark:text-gray-700/30 opacity-50 group-hover:scale-110 transition-transform duration-500 pointer-events-none" />
+            
+            <div className="relative z-10 flex items-center justify-between mb-4 drag-handle cursor-move">
               <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5 text-blue-500" />
                 Status de Vendas
@@ -324,8 +333,11 @@ export function Dashboard({ darkMode, formulas = [], insumos = [], pedidos = [] 
         );
       case 'top_products':
         return (
-          <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
-            <div className="flex items-center justify-between mb-4 drag-handle cursor-move">
+          <div className="relative w-full h-full flex flex-col bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden group">
+            {/* Watermark */}
+            <Package className="absolute -right-4 -bottom-4 w-32 h-32 text-gray-100 dark:text-gray-700/30 opacity-50 group-hover:scale-110 transition-transform duration-500 pointer-events-none" />
+            
+            <div className="relative z-10 flex items-center justify-between mb-4 drag-handle cursor-move">
               <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <Package className="w-5 h-5 text-purple-500" />
                 Produtos Mais Vendidos
@@ -341,7 +353,7 @@ export function Dashboard({ darkMode, formulas = [], insumos = [], pedidos = [] 
             </div>
             <div className="flex-1 min-h-0">
               {topProdutos.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   {topProductsChartType === 'bar' ? (
                     <BarChart data={topProdutos} layout="vertical" margin={{ left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} horizontal={false} />

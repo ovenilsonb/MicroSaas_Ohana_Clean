@@ -13,7 +13,9 @@ import {
   X,
   StickyNote,
   LogOut,
+  FileText,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { currentVersion } from '../version';
 
 interface SidebarProps {
@@ -35,6 +37,7 @@ const menuItems = [
   { id: 'clientes', label: 'Clientes', icon: Users },
   { id: 'vendas', label: 'Vendas', icon: ShoppingCart },
   { id: 'estoque', label: 'Estoque', icon: Warehouse },
+  { id: 'relatorios', label: 'Relatórios', icon: FileText },
 ];
 
 // Produção fica separado como item especial
@@ -96,13 +99,30 @@ export function Sidebar({ activeModule, setActiveModule, collapsed, setCollapsed
               }}
               className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                 isActive
-                  ? 'bg-blue-800 dark:bg-blue-900 !text-black shadow-lg shadow-black/20'
+                  ? 'bg-blue-800 dark:bg-blue-900 shadow-lg shadow-black/20'
                   : 'hover:bg-white/10'
               }`}
             >
-              <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? '!text-black' : 'text-white/70'}`} />
+              <motion.div
+                animate={isActive ? { 
+                  scale: [1, 1.1, 1],
+                  y: [0, -2, 0]
+                } : { 
+                  scale: 1, 
+                  y: 0 
+                }}
+                transition={isActive ? { 
+                  duration: 2, 
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                } : { 
+                  duration: 0.3 
+                }}
+              >
+                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : 'text-white/70'}`} />
+              </motion.div>
               {!collapsed && (
-                <span className={`font-medium ${isActive ? '!text-black' : 'text-white/70'}`}>
+                <span className={`font-medium ${isActive ? 'text-white' : 'text-white/70'}`}>
                   {item.label}
                 </span>
               )}
@@ -164,13 +184,18 @@ export function Sidebar({ activeModule, setActiveModule, collapsed, setCollapsed
           }}
           className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
             activeModule === 'anotacoes'
-              ? 'bg-blue-800 dark:bg-blue-900 !text-black shadow-lg shadow-black/20'
+              ? 'bg-blue-800 dark:bg-blue-900 shadow-lg shadow-black/20'
               : 'hover:bg-white/10'
           }`}
         >
-          <StickyNote className={`w-5 h-5 flex-shrink-0 ${activeModule === 'anotacoes' ? '!text-black' : 'text-white/70'}`} />
+          <motion.div
+            animate={activeModule === 'anotacoes' ? { scale: 1.2, rotate: [0, -10, 10, 0] } : { scale: 1, rotate: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <StickyNote className={`w-5 h-5 flex-shrink-0 ${activeModule === 'anotacoes' ? 'text-white' : 'text-white/70'}`} />
+          </motion.div>
           {!collapsed && (
-            <span className={`font-medium ${activeModule === 'anotacoes' ? '!text-black' : 'text-white/70'}`}>
+            <span className={`font-medium ${activeModule === 'anotacoes' ? 'text-white' : 'text-white/70'}`}>
               Anotações
             </span>
           )}
@@ -185,7 +210,12 @@ export function Sidebar({ activeModule, setActiveModule, collapsed, setCollapsed
               : ''
           }`}
         >
-          <Settings className="w-5 h-5 text-white/70" />
+          <motion.div
+            animate={activeModule === 'config' ? { rotate: 90 } : { rotate: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Settings className="w-5 h-5 text-white/70" />
+          </motion.div>
           {!collapsed && (
             <span className="font-medium text-white/70">Configurações</span>
           )}
