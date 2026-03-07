@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { hasPermission } from './utils/permissions';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -202,6 +202,7 @@ export function App() {
   
   // Supabase Status
   const [supabaseStatus, setSupabaseStatus] = useState<'connected' | 'disconnected' | 'local'>('local');
+  const dataLoadedRef = useRef(false);
 
   // ============== EFEITOS ==============
 
@@ -262,26 +263,20 @@ export function App() {
 
   // Salvar INSUMOS no localStorage e sincronizar com Supabase
   useEffect(() => {
+    if (!dataLoadedRef.current) return;
     localStorage.setItem('ohana_insumos', JSON.stringify(insumos));
-    
-    // Sincronizar com Supabase se configurado
-    if (isSupabaseConfigured()) {
-      dataService.insumos.save(insumos).catch(err => {
-        console.error('Erro ao sincronizar insumos com Supabase:', err);
-      });
-    }
+    dataService.insumos.save(insumos).catch(err => {
+      console.error('Erro ao sincronizar insumos com Supabase:', err);
+    });
   }, [insumos]);
 
   // Salvar FÓRMULAS no localStorage e sincronizar com Supabase
   useEffect(() => {
+    if (!dataLoadedRef.current) return;
     localStorage.setItem('ohana_formulas', JSON.stringify(formulas));
-    
-    // Sincronizar com Supabase se configurado
-    if (isSupabaseConfigured()) {
-      dataService.formulas.save(formulas).catch(err => {
-        console.error('Erro ao sincronizar fórmulas com Supabase:', err);
-      });
-    }
+    dataService.formulas.save(formulas).catch(err => {
+      console.error('Erro ao sincronizar fórmulas com Supabase:', err);
+    });
   }, [formulas]);
 
   // Load saved data
@@ -289,6 +284,15 @@ export function App() {
     const loadData = async () => {
       if (isSupabaseConfigured()) {
         try {
+          const gruposLocal = localStorage.getItem('ohana_grupos');
+          const gruposExistentes = gruposLocal ? JSON.parse(gruposLocal) : [];
+          if (gruposExistentes.length > 0) {
+            await dataService.grupos.save(gruposExistentes);
+          } else {
+            const { gruposData: defaultGrupos } = await import('./data/mockData');
+            await dataService.grupos.save(defaultGrupos);
+          }
+
           const [
             insumosData,
             formulasData,
@@ -310,7 +314,7 @@ export function App() {
             dataService.listasPreco.getAll(),
             dataService.precificacao.getAll()
           ]);
-          
+
           if (insumosData.length) setInsumos(insumosData);
           if (formulasData.length) setFormulas(formulasData);
           if (clientesData.length) {
@@ -324,28 +328,25 @@ export function App() {
           if (estoqueData.length) setProdutosEstoque(estoqueData);
           if (movimentosData.length) setMovimentosEstoque(movimentosData);
           if (listasData.length) setListasPreco(listasData);
-          
+
           if (precificacoesData.length) {
             const precificacoesObj: Record<string, PrecificacaoData> = {};
-            precificacoesData.forEach(p => {
+            precificacoesData.forEach((p: any) => {
               precificacoesObj[p.id] = p;
             });
             setPrecificacoes(precificacoesObj);
           }
 
-          // Auto-sync if Supabase is empty but local storage has data
           const localInsumos = localStorage.getItem('ohana_insumos');
           if (insumosData.length === 0 && localInsumos && JSON.parse(localInsumos).length > 0) {
-            console.log('☁️ Supabase vazio, mas dados locais encontrados. Sincronizando para a nuvem...');
-            dataService.syncToCloud().then(() => {
-              console.log('✅ Sincronização automática concluída!');
-            });
+            console.log('Supabase vazio, sincronizando dados locais...');
+            await dataService.syncToCloud();
+            console.log('Sincronização automática concluída!');
           }
         } catch (error) {
           console.error("Erro ao carregar dados do Supabase", error);
         }
       } else {
-        // Fallback for local storage if Supabase is not configured
         const savedProfile = localStorage.getItem('userProfile');
         if (savedProfile) {
           const profile = JSON.parse(savedProfile);
@@ -353,81 +354,76 @@ export function App() {
           setUserPhoto(profile.foto);
           setProfileForm(prev => ({ ...prev, ...profile }));
         }
-        
+
         const savedPedidos = localStorage.getItem('pedidos');
         if (savedPedidos) setPedidos(JSON.parse(savedPedidos));
-        
+
         const savedOrdens = localStorage.getItem('ordensProducao');
         if (savedOrdens) setOrdensProducao(JSON.parse(savedOrdens));
-        
+
         const savedEstoque = localStorage.getItem('produtosEstoque');
         if (savedEstoque) setProdutosEstoque(JSON.parse(savedEstoque));
-        
+
         const savedMovimentos = localStorage.getItem('movimentosEstoque');
         if (savedMovimentos) setMovimentosEstoque(JSON.parse(savedMovimentos));
-        
+
         const savedClientes = localStorage.getItem('clientes');
         if (savedClientes) setClientes(JSON.parse(savedClientes));
-        
+
         const savedListas = localStorage.getItem('listasPreco');
         if (savedListas) setListasPreco(JSON.parse(savedListas));
-        
+
         const savedPrecificacoes = localStorage.getItem('precificacoes');
         if (savedPrecificacoes) setPrecificacoes(JSON.parse(savedPrecificacoes));
       }
+
+      dataLoadedRef.current = true;
     };
-    
+
     loadData();
   }, [supabaseStatus]);
 
   // Save data on changes
   useEffect(() => {
-    if (pedidos.length > 0) {
-      dataService.pedidos.save(pedidos).catch(err => console.error('Erro ao salvar pedidos:', err));
-    }
+    if (!dataLoadedRef.current || pedidos.length === 0) return;
+    dataService.pedidos.save(pedidos).catch(err => console.error('Erro ao salvar pedidos:', err));
   }, [pedidos]);
 
   useEffect(() => {
-    if (ordensProducao.length > 0) {
-      dataService.ordensProducao.save(ordensProducao).catch(err => console.error('Erro ao salvar ordens:', err));
-    }
+    if (!dataLoadedRef.current || ordensProducao.length === 0) return;
+    dataService.ordensProducao.save(ordensProducao).catch(err => console.error('Erro ao salvar ordens:', err));
   }, [ordensProducao]);
 
   useEffect(() => {
-    if (produtosEstoque.length > 0) {
-      dataService.produtosEstoque.save(produtosEstoque).catch(err => console.error('Erro ao salvar estoque:', err));
-    }
+    if (!dataLoadedRef.current || produtosEstoque.length === 0) return;
+    dataService.produtosEstoque.save(produtosEstoque).catch(err => console.error('Erro ao salvar estoque:', err));
   }, [produtosEstoque]);
 
   useEffect(() => {
-    if (movimentosEstoque.length > 0) {
-      dataService.movimentacoesEstoque.save(movimentosEstoque).catch(err => console.error('Erro ao salvar movimentos:', err));
-    }
+    if (!dataLoadedRef.current || movimentosEstoque.length === 0) return;
+    dataService.movimentacoesEstoque.save(movimentosEstoque).catch(err => console.error('Erro ao salvar movimentos:', err));
   }, [movimentosEstoque]);
 
   useEffect(() => {
-    if (clientes.length > 0) {
-      dataService.clientes.save(clientes.map(c => ({
-        ...c,
-        createdAt: (c as any).dataCadastro || (c as any).createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }))).catch(err => {
-        console.error('Erro ao sincronizar clientes com Supabase:', err);
-      });
-    }
+    if (!dataLoadedRef.current || clientes.length === 0) return;
+    dataService.clientes.save(clientes.map(c => ({
+      ...c,
+      createdAt: (c as any).dataCadastro || (c as any).createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }))).catch(err => {
+      console.error('Erro ao sincronizar clientes com Supabase:', err);
+    });
   }, [clientes]);
 
   useEffect(() => {
-    if (listasPreco.length > 0) {
-      dataService.listasPreco.save(listasPreco).catch(err => console.error('Erro ao salvar listas:', err));
-    }
+    if (!dataLoadedRef.current || listasPreco.length === 0) return;
+    dataService.listasPreco.save(listasPreco).catch(err => console.error('Erro ao salvar listas:', err));
   }, [listasPreco]);
 
   useEffect(() => {
-    if (Object.keys(precificacoes).length > 0) {
-      const precificacoesArray = Object.values(precificacoes);
-      dataService.precificacao.save(precificacoesArray).catch(err => console.error('Erro ao salvar precificacoes:', err));
-    }
+    if (!dataLoadedRef.current || Object.keys(precificacoes).length === 0) return;
+    const precificacoesArray = Object.values(precificacoes);
+    dataService.precificacao.save(precificacoesArray).catch(err => console.error('Erro ao salvar precificacoes:', err));
   }, [precificacoes]);
 
   // ============== INTEGRAÇÕES ==============

@@ -46,8 +46,24 @@ type SortMode = 'az' | 'za' | 'asc' | 'desc';
 type TabType = 'formulas' | 'grupos' | 'proporcao';
 
 export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdit = true, canDelete = true }: FormulasProps) {
-  // Grupos ainda usa estado interno (pode ser movido depois)
-  const [grupos, setGrupos] = useState<Grupo[]>(initialGrupos);
+  const [grupos, setGrupos] = useState<Grupo[]>(() => {
+    const saved = localStorage.getItem('ohana_grupos');
+    return saved ? JSON.parse(saved) : initialGrupos;
+  });
+
+  useEffect(() => {
+    dataService.grupos.getAll().then(data => {
+      if (data.length > 0) {
+        setGrupos(data);
+      } else {
+        dataService.grupos.save(initialGrupos).catch(console.error);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    dataService.grupos.save(grupos).catch(console.error);
+  }, [grupos]);
   const [activeTab, setActiveTab] = useState<TabType>('formulas');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');

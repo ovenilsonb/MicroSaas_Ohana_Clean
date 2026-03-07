@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Search,
   List,
@@ -42,6 +42,7 @@ import {
 } from 'recharts';
 import { Formula, Precificacao as PrecificacaoType, Grupo } from '../types';
 import { gruposData } from '../data/mockData';
+import { dataService } from '../lib/dataService';
 import { Modal } from './Modal';
 import { CurrencyInput } from './ui/CurrencyInput';
 
@@ -101,7 +102,16 @@ export function Precificacao({
   setPrecificacoes
 }: ListaPrecoProps) {
   const [activeTab, setActiveTab] = useState<TabType>('precos');
-  const [grupos] = useState<Grupo[]>(gruposData);
+  const [grupos, setGrupos] = useState<Grupo[]>(() => {
+    const saved = localStorage.getItem('ohana_grupos');
+    return saved ? JSON.parse(saved) : gruposData;
+  });
+
+  useEffect(() => {
+    dataService.grupos.getAll().then(data => {
+      if (data.length > 0) setGrupos(data);
+    });
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortMode, setSortMode] = useState<SortMode>('az');

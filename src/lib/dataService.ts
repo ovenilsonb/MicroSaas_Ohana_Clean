@@ -111,7 +111,6 @@ class DataServiceImpl {
             if (error) throw error;
 
             if (variantes && variantes.length > 0) {
-              await supabase.from('insumo_variantes').delete().eq('insumo_id', insumo.id);
               const varData = variantes.map((v: InsumoVariante) => ({
                 id: v.id,
                 insumo_id: insumo.id,
@@ -119,8 +118,12 @@ class DataServiceImpl {
                 codigo: v.codigo || null,
                 valor_unitario: v.valorUnitario || 0,
               }));
-              const { error: varError } = await supabase.from('insumo_variantes').insert(varData);
+              const currentIds = variantes.map((v: InsumoVariante) => v.id);
+              await supabase.from('insumo_variantes').delete().eq('insumo_id', insumo.id).not('id', 'in', `(${currentIds.join(',')})`);
+              const { error: varError } = await supabase.from('insumo_variantes').upsert(varData, { onConflict: 'id' });
               if (varError) console.error('Erro variantes:', varError);
+            } else {
+              await supabase.from('insumo_variantes').delete().eq('insumo_id', insumo.id);
             }
           }
           return { success: true };
@@ -1147,11 +1150,11 @@ class DataServiceImpl {
         updatedAt: new Date().toISOString(),
       }));
 
+      if (grupos.length) await this.grupos.save(grupos);
+
       const insumosResult = await this.insumos.syncFull(insumos);
       const formulasResult = await this.formulas.syncFull(formulas);
       const clientesResult = await this.clientes.syncFull(clientes);
-
-      if (grupos.length) await this.grupos.save(grupos);
       if (pedidos.length) await this.pedidos.save(pedidos);
       if (ordens.length) await this.ordensProducao.save(ordens);
       if (estoque.length) await this.produtosEstoque.save(estoque);
