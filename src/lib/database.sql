@@ -1,333 +1,380 @@
 -- =====================================================
 -- OHANA CLEAN - Sistema de Gestão Industrial
--- Script SQL para Supabase
--- Versão 1.31.0
--- =====================================================
-
+-- Script SQL Completo para Supabase
 -- =====================================================
 -- IMPORTANTE: Execute este script no SQL Editor do Supabase
--- Este script usa TEXT para IDs para compatibilidade com
--- o sistema que gera IDs como strings simples
+-- Ele vai recriar TODAS as tabelas com estrutura limpa
 -- =====================================================
 
 -- =====================================================
--- TABELA: INSUMOS
+-- 1. REMOVER TABELAS EXISTENTES (ordem correta por dependências)
 -- =====================================================
-DROP TABLE IF EXISTS formula_historico CASCADE;
-DROP TABLE IF EXISTS formula_insumos CASCADE;
-DROP TABLE IF EXISTS insumo_variantes CASCADE;
-DROP TABLE IF EXISTS regras_preco CASCADE;
-DROP TABLE IF EXISTS precificacao CASCADE;
-DROP TABLE IF EXISTS movimentacoes_estoque CASCADE;
-DROP TABLE IF EXISTS produtos_estoque CASCADE;
-DROP TABLE IF EXISTS ordens_producao CASCADE;
-DROP TABLE IF EXISTS pedido_itens CASCADE;
-DROP TABLE IF EXISTS pedidos CASCADE;
-DROP TABLE IF EXISTS listas_preco CASCADE;
-DROP TABLE IF EXISTS clientes CASCADE;
-DROP TABLE IF EXISTS formulas CASCADE;
-DROP TABLE IF EXISTS grupos CASCADE;
-DROP TABLE IF EXISTS insumos CASCADE;
+DROP TABLE IF EXISTS public.anotacoes CASCADE;
+DROP TABLE IF EXISTS public.formula_historico CASCADE;
+DROP TABLE IF EXISTS public.formula_insumos CASCADE;
+DROP TABLE IF EXISTS public.insumo_variantes CASCADE;
+DROP TABLE IF EXISTS public.insumo_movimentacoes CASCADE;
+DROP TABLE IF EXISTS public.regras_preco CASCADE;
+DROP TABLE IF EXISTS public.precificacao CASCADE;
+DROP TABLE IF EXISTS public.movimentacoes_estoque CASCADE;
+DROP TABLE IF EXISTS public.produtos_estoque CASCADE;
+DROP TABLE IF EXISTS public.ordens_producao CASCADE;
+DROP TABLE IF EXISTS public.pedido_itens CASCADE;
+DROP TABLE IF EXISTS public.pedidos CASCADE;
+DROP TABLE IF EXISTS public.listas_preco CASCADE;
+DROP TABLE IF EXISTS public.clientes CASCADE;
+DROP TABLE IF EXISTS public.formulas CASCADE;
+DROP TABLE IF EXISTS public.grupos CASCADE;
+DROP TABLE IF EXISTS public.insumos CASCADE;
+DROP TABLE IF EXISTS public.user_profiles CASCADE;
+DROP TABLE IF EXISTS public.access_groups CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
 
-CREATE TABLE insumos (
+-- =====================================================
+-- 2. TABELAS BASE
+-- =====================================================
+
+CREATE TABLE public.insumos (
   id TEXT PRIMARY KEY,
-  nome VARCHAR(255) NOT NULL,
-  codigo VARCHAR(50),
-  unidade VARCHAR(20) NOT NULL,
-  valor_unitario DECIMAL(10,4) NOT NULL DEFAULT 0,
-  fornecedor VARCHAR(255),
-  estoque DECIMAL(10,2) DEFAULT 0,
-  estoque_minimo DECIMAL(10,2) DEFAULT 0,
-  validade DATE,
-  validade_indeterminada BOOLEAN DEFAULT FALSE,
-  quimico BOOLEAN DEFAULT FALSE,
+  nome TEXT NOT NULL,
+  apelido TEXT,
+  codigo TEXT,
+  unidade TEXT NOT NULL,
+  valor_unitario NUMERIC NOT NULL DEFAULT 0,
+  fornecedor TEXT,
+  estoque NUMERIC NOT NULL DEFAULT 0,
+  estoque_minimo NUMERIC NOT NULL DEFAULT 0,
+  validade TEXT,
+  validade_indeterminada BOOLEAN DEFAULT false,
+  quimico BOOLEAN DEFAULT false,
   foto TEXT,
   imagem TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- =====================================================
--- TABELA: VARIANTES DE INSUMOS
--- =====================================================
-CREATE TABLE insumo_variantes (
+CREATE TABLE public.insumo_variantes (
   id TEXT PRIMARY KEY,
-  insumo_id TEXT REFERENCES insumos(id) ON DELETE CASCADE,
-  nome VARCHAR(255) NOT NULL,
-  codigo VARCHAR(50),
-  valor_unitario DECIMAL(10,4) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  insumo_id TEXT REFERENCES public.insumos(id) ON DELETE CASCADE,
+  nome TEXT NOT NULL,
+  codigo TEXT,
+  valor_unitario NUMERIC NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- =====================================================
--- TABELA: GRUPOS DE FÓRMULAS
--- =====================================================
-CREATE TABLE grupos (
+CREATE TABLE public.grupos (
   id TEXT PRIMARY KEY,
-  nome VARCHAR(255) NOT NULL,
-  cor VARCHAR(20) DEFAULT '#3B82F6',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  nome TEXT NOT NULL,
+  cor TEXT DEFAULT '#3B82F6',
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- =====================================================
--- TABELA: FÓRMULAS
--- =====================================================
-CREATE TABLE formulas (
+CREATE TABLE public.formulas (
   id TEXT PRIMARY KEY,
-  nome VARCHAR(255) NOT NULL,
-  codigo VARCHAR(50),
+  nome TEXT NOT NULL,
+  codigo TEXT,
   descricao TEXT,
-  grupo_id TEXT REFERENCES grupos(id),
-  peso_volume VARCHAR(50),
-  unidade VARCHAR(20),
-  rendimento INTEGER DEFAULT 1,
+  grupo_id TEXT REFERENCES public.grupos(id) ON DELETE SET NULL,
+  peso_volume TEXT,
+  unidade TEXT,
+  rendimento NUMERIC NOT NULL DEFAULT 1,
   observacoes TEXT,
-  status VARCHAR(20) DEFAULT 'rascunho',
-  lista_insumo VARCHAR(255),
-  prefixo_lote VARCHAR(50),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  status TEXT DEFAULT 'rascunho',
+  lista_insumo TEXT,
+  prefixo_lote TEXT,
+  custo_total NUMERIC DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- =====================================================
--- TABELA: INSUMOS DA FÓRMULA
--- =====================================================
-CREATE TABLE formula_insumos (
+CREATE TABLE public.formula_insumos (
   id TEXT PRIMARY KEY,
-  formula_id TEXT REFERENCES formulas(id) ON DELETE CASCADE,
-  insumo_id TEXT REFERENCES insumos(id),
-  variante_id TEXT REFERENCES insumo_variantes(id),
-  nome VARCHAR(255) NOT NULL,
-  unidade VARCHAR(20),
-  quantidade DECIMAL(10,3) NOT NULL DEFAULT 0,
-  valor_unitario DECIMAL(10,4) DEFAULT 0,
-  quimico BOOLEAN DEFAULT FALSE,
+  formula_id TEXT REFERENCES public.formulas(id) ON DELETE CASCADE,
+  insumo_id TEXT REFERENCES public.insumos(id) ON DELETE SET NULL,
+  variante_id TEXT,
+  nome TEXT NOT NULL,
+  unidade TEXT,
+  quantidade NUMERIC NOT NULL DEFAULT 0,
+  valor_unitario NUMERIC DEFAULT 0,
+  custo NUMERIC DEFAULT 0,
+  quimico BOOLEAN DEFAULT false,
   ordem INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- =====================================================
--- TABELA: HISTÓRICO DE ALTERAÇÕES DA FÓRMULA
--- =====================================================
-CREATE TABLE formula_historico (
+CREATE TABLE public.formula_historico (
   id TEXT PRIMARY KEY,
-  formula_id TEXT REFERENCES formulas(id) ON DELETE CASCADE,
-  data TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  acao VARCHAR(255),
+  formula_id TEXT REFERENCES public.formulas(id) ON DELETE CASCADE,
+  data TIMESTAMPTZ DEFAULT NOW(),
+  acao TEXT,
   detalhes TEXT
 );
 
--- =====================================================
--- TABELA: CLIENTES
--- =====================================================
-CREATE TABLE clientes (
+CREATE TABLE public.clientes (
   id TEXT PRIMARY KEY,
-  nome VARCHAR(255) NOT NULL,
-  email VARCHAR(255),
-  telefone VARCHAR(50),
-  documento VARCHAR(50),
-  tipo VARCHAR(50) DEFAULT 'pf',
-  endereco_rua VARCHAR(255),
-  endereco_numero VARCHAR(20),
-  endereco_bairro VARCHAR(100),
-  endereco_cidade VARCHAR(100),
-  endereco_estado VARCHAR(50),
-  endereco_cep VARCHAR(20),
+  nome TEXT NOT NULL,
+  email TEXT,
+  telefone TEXT,
+  documento TEXT,
+  tipo TEXT DEFAULT 'pf',
+  endereco_rua TEXT,
+  endereco_numero TEXT,
+  endereco_bairro TEXT,
+  endereco_cidade TEXT,
+  endereco_estado TEXT,
+  endereco_cep TEXT,
   observacoes TEXT,
-  ativo BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  ativo BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- =====================================================
--- TABELA: LISTAS DE PREÇO
--- =====================================================
-CREATE TABLE listas_preco (
+CREATE TABLE public.listas_preco (
   id TEXT PRIMARY KEY,
-  nome VARCHAR(255) NOT NULL,
+  nome TEXT NOT NULL,
   descricao TEXT,
-  ativo BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  aplicar_a TEXT DEFAULT 'produto',
+  ativo BOOLEAN DEFAULT true,
+  regras JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- =====================================================
--- TABELA: PEDIDOS
--- =====================================================
-CREATE TABLE pedidos (
+CREATE TABLE public.pedidos (
   id TEXT PRIMARY KEY,
-  numero VARCHAR(50) NOT NULL,
-  tipo VARCHAR(20) DEFAULT 'venda',
-  cliente_id TEXT REFERENCES clientes(id),
-  cliente_nome VARCHAR(255),
-  cliente_telefone VARCHAR(50),
-  cliente_email VARCHAR(255),
-  cliente_endereco TEXT,
-  forma_pagamento VARCHAR(50),
-  status VARCHAR(50) DEFAULT 'pendente',
-  subtotal DECIMAL(10,2) DEFAULT 0,
-  desconto DECIMAL(10,2) DEFAULT 0,
-  total DECIMAL(10,2) DEFAULT 0,
+  numero TEXT NOT NULL,
+  tipo TEXT DEFAULT 'venda',
+  cliente_id TEXT,
+  cliente TEXT,
+  telefone TEXT,
+  email TEXT,
+  endereco TEXT,
+  items JSONB NOT NULL DEFAULT '[]'::jsonb,
+  subtotal NUMERIC NOT NULL DEFAULT 0,
+  desconto NUMERIC NOT NULL DEFAULT 0,
+  total NUMERIC NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pendente',
+  forma_pagamento TEXT,
+  tipo_entrega TEXT,
+  lista_preco_id TEXT,
   observacoes TEXT,
-  lista_preco_id TEXT REFERENCES listas_preco(id),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- =====================================================
--- TABELA: ITENS DO PEDIDO
--- =====================================================
-CREATE TABLE pedido_itens (
+CREATE TABLE public.ordens_producao (
   id TEXT PRIMARY KEY,
-  pedido_id TEXT REFERENCES pedidos(id) ON DELETE CASCADE,
-  formula_id TEXT REFERENCES formulas(id),
-  nome VARCHAR(255) NOT NULL,
-  quantidade INTEGER NOT NULL DEFAULT 1,
-  preco_unitario DECIMAL(10,2) NOT NULL DEFAULT 0,
-  subtotal DECIMAL(10,2) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- =====================================================
--- TABELA: ORDENS DE PRODUÇÃO
--- =====================================================
-CREATE TABLE ordens_producao (
-  id TEXT PRIMARY KEY,
-  numero VARCHAR(50) NOT NULL,
-  pedido_id TEXT REFERENCES pedidos(id),
-  formula_id TEXT REFERENCES formulas(id),
-  produto_nome VARCHAR(255) NOT NULL,
-  quantidade INTEGER NOT NULL DEFAULT 1,
-  lote VARCHAR(50),
-  status VARCHAR(50) DEFAULT 'aguardando',
-  prioridade VARCHAR(20) DEFAULT 'normal',
-  cliente_nome VARCHAR(255),
-  iniciado_em TIMESTAMP WITH TIME ZONE,
-  concluido_em TIMESTAMP WITH TIME ZONE,
+  numero TEXT NOT NULL,
+  pedido_id TEXT,
+  pedido_numero TEXT,
+  cliente TEXT,
+  formula_id TEXT,
+  formula_nome TEXT,
+  quantidade NUMERIC NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'aguardando',
+  prioridade TEXT DEFAULT 'normal',
+  lote TEXT,
   observacoes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  iniciado_em TEXT,
+  concluido_em TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- =====================================================
--- TABELA: PRODUTOS EM ESTOQUE
--- =====================================================
-CREATE TABLE produtos_estoque (
+CREATE TABLE public.produtos_estoque (
   id TEXT PRIMARY KEY,
-  formula_id TEXT REFERENCES formulas(id),
-  nome VARCHAR(255) NOT NULL,
-  quantidade INTEGER DEFAULT 0,
-  estoque_minimo INTEGER DEFAULT 10,
-  lote VARCHAR(50),
-  validade DATE,
-  localizacao VARCHAR(100),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  formula_id TEXT,
+  nome TEXT NOT NULL,
+  codigo TEXT,
+  quantidade NUMERIC NOT NULL DEFAULT 0,
+  estoque_minimo NUMERIC NOT NULL DEFAULT 0,
+  unidade TEXT,
+  ultima_entrada TEXT,
+  ultima_saida TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- =====================================================
--- TABELA: MOVIMENTAÇÕES DE ESTOQUE
--- =====================================================
-CREATE TABLE movimentacoes_estoque (
+CREATE TABLE public.movimentacoes_estoque (
   id TEXT PRIMARY KEY,
-  produto_id TEXT REFERENCES produtos_estoque(id) ON DELETE CASCADE,
-  tipo VARCHAR(20) NOT NULL,
-  quantidade INTEGER NOT NULL DEFAULT 0,
-  motivo VARCHAR(255),
-  referencia VARCHAR(255),
-  observacoes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  tipo TEXT NOT NULL,
+  produto_id TEXT,
+  produto_nome TEXT,
+  quantidade NUMERIC NOT NULL DEFAULT 0,
+  motivo TEXT,
+  referencia TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- =====================================================
--- TABELA: REGRAS DE PREÇO
--- =====================================================
-CREATE TABLE regras_preco (
+CREATE TABLE public.precificacao (
   id TEXT PRIMARY KEY,
-  lista_id TEXT REFERENCES listas_preco(id) ON DELETE CASCADE,
-  aplicar_a VARCHAR(20) DEFAULT 'produto',
-  formula_id TEXT REFERENCES formulas(id),
-  grupo_id TEXT REFERENCES grupos(id),
-  variante VARCHAR(255),
-  tipo_preco VARCHAR(20) DEFAULT 'formula',
-  margem DECIMAL(10,2) DEFAULT 0,
-  preco_fixo DECIMAL(10,2),
-  quantidade_minima INTEGER DEFAULT 1,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  formula_id TEXT,
+  custos_fixos NUMERIC NOT NULL DEFAULT 0,
+  preco_varejo NUMERIC NOT NULL DEFAULT 0,
+  preco_atacado NUMERIC NOT NULL DEFAULT 0,
+  preco_fardo NUMERIC NOT NULL DEFAULT 0,
+  quantidade_fardo NUMERIC NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- =====================================================
--- TABELA: PRECIFICAÇÃO
--- =====================================================
-CREATE TABLE precificacao (
+CREATE TABLE public.anotacoes (
   id TEXT PRIMARY KEY,
-  formula_id TEXT REFERENCES formulas(id),
-  custos_fixos DECIMAL(10,2) DEFAULT 0,
-  preco_varejo DECIMAL(10,2),
-  preco_atacado DECIMAL(10,2),
-  preco_fardo DECIMAL(10,2),
-  quantidade_fardo INTEGER DEFAULT 6,
-  tipo_unidade VARCHAR(10) DEFAULT '2L',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  titulo TEXT NOT NULL DEFAULT '',
+  conteudo TEXT NOT NULL DEFAULT '',
+  cor TEXT DEFAULT '#fbbf24',
+  fixada BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- =====================================================
--- ROW LEVEL SECURITY (RLS)
+-- 3. TABELAS DE ACESSO E USUÁRIOS
 -- =====================================================
 
--- Habilitar RLS em todas as tabelas
-ALTER TABLE insumos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE insumo_variantes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE grupos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE formulas ENABLE ROW LEVEL SECURITY;
-ALTER TABLE formula_insumos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE formula_historico ENABLE ROW LEVEL SECURITY;
-ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pedidos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pedido_itens ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ordens_producao ENABLE ROW LEVEL SECURITY;
-ALTER TABLE produtos_estoque ENABLE ROW LEVEL SECURITY;
-ALTER TABLE movimentacoes_estoque ENABLE ROW LEVEL SECURITY;
-ALTER TABLE listas_preco ENABLE ROW LEVEL SECURITY;
-ALTER TABLE regras_preco ENABLE ROW LEVEL SECURITY;
-ALTER TABLE precificacao ENABLE ROW LEVEL SECURITY;
+CREATE TABLE public.access_groups (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  permissions JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
 
--- Políticas permissivas para desenvolvimento (CRUD completo)
--- Em produção, configure políticas mais restritivas com autenticação
-
-CREATE POLICY "Allow all for insumos" ON insumos FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for insumo_variantes" ON insumo_variantes FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for grupos" ON grupos FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for formulas" ON formulas FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for formula_insumos" ON formula_insumos FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for formula_historico" ON formula_historico FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for clientes" ON clientes FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for pedidos" ON pedidos FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for pedido_itens" ON pedido_itens FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for ordens_producao" ON ordens_producao FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for produtos_estoque" ON produtos_estoque FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for movimentacoes_estoque" ON movimentacoes_estoque FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for listas_preco" ON listas_preco FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for regras_preco" ON regras_preco FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for precificacao" ON precificacao FOR ALL USING (true) WITH CHECK (true);
+CREATE TABLE public.user_profiles (
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  email TEXT NOT NULL,
+  nome TEXT NOT NULL,
+  funcao TEXT,
+  avatar TEXT,
+  role TEXT DEFAULT 'operador',
+  role_id UUID REFERENCES public.access_groups(id) ON DELETE SET NULL,
+  limits JSONB DEFAULT '{"insumos": 100, "formulas": 50, "relatorios": 100, "cadastros": 100}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
 
 -- =====================================================
--- ÍNDICES PARA PERFORMANCE
+-- 4. ROW LEVEL SECURITY
 -- =====================================================
 
-CREATE INDEX idx_insumos_codigo ON insumos(codigo);
-CREATE INDEX idx_insumos_nome ON insumos(nome);
-CREATE INDEX idx_formulas_codigo ON formulas(codigo);
-CREATE INDEX idx_formulas_grupo ON formulas(grupo_id);
-CREATE INDEX idx_clientes_documento ON clientes(documento);
-CREATE INDEX idx_pedidos_numero ON pedidos(numero);
-CREATE INDEX idx_pedidos_cliente ON pedidos(cliente_id);
-CREATE INDEX idx_ordens_pedido ON ordens_producao(pedido_id);
-CREATE INDEX idx_estoque_formula ON produtos_estoque(formula_id);
+ALTER TABLE public.insumos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.insumo_variantes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.grupos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.formulas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.formula_insumos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.formula_historico ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clientes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.listas_preco ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pedidos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ordens_producao ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.produtos_estoque ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.movimentacoes_estoque ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.precificacao ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.anotacoes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.access_groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+
+DO $$
+DECLARE
+  t_name text;
+BEGIN
+  FOR t_name IN
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+    AND table_name IN (
+      'insumos', 'insumo_variantes', 'grupos', 'formulas', 'formula_insumos',
+      'formula_historico', 'clientes', 'listas_preco', 'pedidos',
+      'ordens_producao', 'produtos_estoque', 'movimentacoes_estoque',
+      'precificacao', 'anotacoes', 'access_groups', 'user_profiles'
+    )
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "Allow all for authenticated" ON public.%I;', t_name);
+    EXECUTE format('CREATE POLICY "Allow all for authenticated" ON public.%I FOR ALL TO authenticated USING (true) WITH CHECK (true);', t_name);
+    EXECUTE format('DROP POLICY IF EXISTS "Allow all for anon" ON public.%I;', t_name);
+    EXECUTE format('CREATE POLICY "Allow all for anon" ON public.%I FOR ALL TO anon USING (true) WITH CHECK (true);', t_name);
+  END LOOP;
+END $$;
+
+-- =====================================================
+-- 5. ÍNDICES PARA PERFORMANCE
+-- =====================================================
+
+CREATE INDEX idx_insumos_codigo ON public.insumos(codigo);
+CREATE INDEX idx_insumos_nome ON public.insumos(nome);
+CREATE INDEX idx_formulas_codigo ON public.formulas(codigo);
+CREATE INDEX idx_formulas_grupo ON public.formulas(grupo_id);
+CREATE INDEX idx_clientes_documento ON public.clientes(documento);
+CREATE INDEX idx_pedidos_numero ON public.pedidos(numero);
+CREATE INDEX idx_pedidos_cliente ON public.pedidos(cliente_id);
+CREATE INDEX idx_ordens_pedido ON public.ordens_producao(pedido_id);
+CREATE INDEX idx_estoque_formula ON public.produtos_estoque(formula_id);
+CREATE INDEX idx_precificacao_formula ON public.precificacao(formula_id);
+
+-- =====================================================
+-- 6. GRUPO ADMINISTRADOR PADRÃO
+-- =====================================================
+
+INSERT INTO public.access_groups (id, name, description, permissions)
+VALUES (
+  '00000000-0000-0000-0000-000000000000',
+  'Administrador',
+  'Acesso total ao sistema',
+  '{
+    "insumos": ["view", "create", "edit", "delete", "copy"],
+    "formulas": ["view", "create", "edit", "delete", "copy"],
+    "precificacao": ["view", "create", "edit", "delete", "copy"],
+    "vendas": ["view", "create", "edit", "delete", "copy"],
+    "producao": ["view", "create", "edit", "delete", "copy"],
+    "estoque": ["view", "create", "edit", "delete", "copy"],
+    "clientes": ["view", "create", "edit", "delete", "copy"],
+    "relatorios": ["view", "create", "edit", "delete", "copy"],
+    "configuracoes": ["view", "create", "edit", "delete", "copy"],
+    "usuarios": ["view", "create", "edit", "delete", "copy"]
+  }'::jsonb
+) ON CONFLICT (id) DO NOTHING;
+
+-- =====================================================
+-- 7. CONFIGURAR USUÁRIO ADMINISTRADOR (contato@ohanaclean.com.br)
+-- =====================================================
+
+INSERT INTO public.user_profiles (id, email, nome, role, role_id)
+SELECT
+  id,
+  email,
+  COALESCE(raw_user_meta_data->>'full_name', split_part(email, '@', 1)),
+  CASE WHEN email = 'contato@ohanaclean.com.br' THEN 'admin' ELSE 'operador' END,
+  CASE WHEN email = 'contato@ohanaclean.com.br' THEN '00000000-0000-0000-0000-000000000000'::uuid ELSE NULL END
+FROM auth.users
+ON CONFLICT (id) DO UPDATE
+SET
+  role = CASE WHEN EXCLUDED.email = 'contato@ohanaclean.com.br' THEN 'admin' ELSE public.user_profiles.role END,
+  role_id = CASE WHEN EXCLUDED.email = 'contato@ohanaclean.com.br' THEN '00000000-0000-0000-0000-000000000000'::uuid ELSE public.user_profiles.role_id END;
+
+-- =====================================================
+-- 8. TRIGGER PARA NOVOS USUÁRIOS
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.user_profiles (id, email, nome, role)
+  VALUES (
+    new.id,
+    new.email,
+    COALESCE(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    'operador'
+  ) ON CONFLICT (id) DO NOTHING;
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- =====================================================
 -- FIM DO SCRIPT
--- Execute este script no SQL Editor do Supabase
--- Depois configure a URL e Anon Key no sistema
+-- Execute no SQL Editor do Supabase
 -- =====================================================

@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ArrowLeft
 } from 'lucide-react';
+import { dataService } from '../lib/dataService';
 
 interface Note {
   id: string;
@@ -105,7 +106,31 @@ export function Anotacoes() {
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    dataService.anotacoes.getAll().then(data => {
+      if (data.length > 0) {
+        const mapped = data.map((n: any) => ({
+          id: n.id,
+          title: n.titulo || n.title || '',
+          content: n.conteudo || n.content || '',
+          updatedAt: n.updatedAt || n.updated_at || new Date().toISOString(),
+        }));
+        setNotes(mapped);
+        if (!activeNoteId && mapped.length > 0) {
+          setActiveNoteId(mapped[0].id);
+        }
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem('ohana_notes', JSON.stringify(notes));
+    const mapped = notes.map(n => ({
+      id: n.id,
+      titulo: n.title,
+      conteudo: n.content,
+      updatedAt: n.updatedAt,
+    }));
+    dataService.anotacoes.save(mapped).catch(err => console.error('Erro ao salvar anotações:', err));
   }, [notes]);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
@@ -133,6 +158,7 @@ export function Anotacoes() {
   };
 
   const handleDeleteNote = (id: string) => {
+    dataService.anotacoes.delete(id).catch(err => console.error('Erro ao deletar nota:', err));
     const newNotes = notes.filter(n => n.id !== id);
     setNotes(newNotes);
     if (activeNoteId === id) {

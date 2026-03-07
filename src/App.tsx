@@ -303,12 +303,12 @@ export function App() {
             dataService.insumos.getAll(),
             dataService.formulas.getAll(),
             dataService.clientes.getAll(),
-            dataService.generic.getAll<Pedido>('pedidos'),
-            dataService.generic.getAll<OrdemProducao>('ordens_producao'),
-            dataService.generic.getAll<ProdutoEstoque>('produtos_estoque'),
-            dataService.generic.getAll<MovimentoEstoque>('movimentacoes_estoque'),
-            dataService.generic.getAll<ListaPrecoAvancada>('listas_preco'),
-            dataService.generic.getAll<any>('precificacao')
+            dataService.pedidos.getAll(),
+            dataService.ordensProducao.getAll(),
+            dataService.produtosEstoque.getAll(),
+            dataService.movimentacoesEstoque.getAll(),
+            dataService.listasPreco.getAll(),
+            dataService.precificacao.getAll()
           ]);
           
           if (insumosData.length) setInsumos(insumosData);
@@ -382,34 +382,34 @@ export function App() {
 
   // Save data on changes
   useEffect(() => {
-    if (isSupabaseConfigured() && pedidos.length > 0) {
-      dataService.generic.save('pedidos', pedidos).catch(err => console.error('Erro ao salvar pedidos:', err));
+    if (pedidos.length > 0) {
+      dataService.pedidos.save(pedidos).catch(err => console.error('Erro ao salvar pedidos:', err));
     }
   }, [pedidos]);
 
   useEffect(() => {
-    if (isSupabaseConfigured() && ordensProducao.length > 0) {
-      dataService.generic.save('ordens_producao', ordensProducao).catch(err => console.error('Erro ao salvar ordens:', err));
+    if (ordensProducao.length > 0) {
+      dataService.ordensProducao.save(ordensProducao).catch(err => console.error('Erro ao salvar ordens:', err));
     }
   }, [ordensProducao]);
 
   useEffect(() => {
-    if (isSupabaseConfigured() && produtosEstoque.length > 0) {
-      dataService.generic.save('produtos_estoque', produtosEstoque).catch(err => console.error('Erro ao salvar estoque:', err));
+    if (produtosEstoque.length > 0) {
+      dataService.produtosEstoque.save(produtosEstoque).catch(err => console.error('Erro ao salvar estoque:', err));
     }
   }, [produtosEstoque]);
 
   useEffect(() => {
-    if (isSupabaseConfigured() && movimentosEstoque.length > 0) {
-      dataService.generic.save('movimentacoes_estoque', movimentosEstoque).catch(err => console.error('Erro ao salvar movimentos:', err));
+    if (movimentosEstoque.length > 0) {
+      dataService.movimentacoesEstoque.save(movimentosEstoque).catch(err => console.error('Erro ao salvar movimentos:', err));
     }
   }, [movimentosEstoque]);
 
   useEffect(() => {
-    if (isSupabaseConfigured() && clientes.length > 0) {
+    if (clientes.length > 0) {
       dataService.clientes.save(clientes.map(c => ({
         ...c,
-        createdAt: c.dataCadastro || new Date().toISOString(),
+        createdAt: (c as any).dataCadastro || (c as any).createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }))).catch(err => {
         console.error('Erro ao sincronizar clientes com Supabase:', err);
@@ -418,15 +418,15 @@ export function App() {
   }, [clientes]);
 
   useEffect(() => {
-    if (isSupabaseConfigured() && listasPreco.length > 0) {
-      dataService.generic.save('listas_preco', listasPreco).catch(err => console.error('Erro ao salvar listas:', err));
+    if (listasPreco.length > 0) {
+      dataService.listasPreco.save(listasPreco).catch(err => console.error('Erro ao salvar listas:', err));
     }
   }, [listasPreco]);
 
   useEffect(() => {
-    if (isSupabaseConfigured() && Object.keys(precificacoes).length > 0) {
+    if (Object.keys(precificacoes).length > 0) {
       const precificacoesArray = Object.values(precificacoes);
-      dataService.generic.save('precificacao', precificacoesArray).catch(err => console.error('Erro ao salvar precificacoes:', err));
+      dataService.precificacao.save(precificacoesArray).catch(err => console.error('Erro ao salvar precificacoes:', err));
     }
   }, [precificacoes]);
 
