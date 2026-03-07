@@ -286,63 +286,126 @@ export function App() {
 
   // Load saved data
   useEffect(() => {
-    const savedProfile = localStorage.getItem('userProfile');
-    if (savedProfile) {
-      const profile = JSON.parse(savedProfile);
-      setUserName(profile.nome);
-      setUserPhoto(profile.foto);
-      setProfileForm(prev => ({ ...prev, ...profile }));
-    }
+    const loadData = async () => {
+      if (isSupabaseConfigured()) {
+        try {
+          const [
+            insumosData,
+            formulasData,
+            clientesData,
+            pedidosData,
+            ordensData,
+            estoqueData,
+            movimentosData,
+            listasData,
+            precificacoesData
+          ] = await Promise.all([
+            dataService.insumos.getAll(),
+            dataService.formulas.getAll(),
+            dataService.clientes.getAll(),
+            dataService.generic.getAll<Pedido>('pedidos'),
+            dataService.generic.getAll<OrdemProducao>('ordens_producao'),
+            dataService.generic.getAll<ProdutoEstoque>('produtos_estoque'),
+            dataService.generic.getAll<MovimentoEstoque>('movimentacoes_estoque'),
+            dataService.generic.getAll<ListaPrecoAvancada>('listas_preco'),
+            dataService.generic.getAll<any>('precificacao')
+          ]);
+          
+          if (insumosData.length) setInsumos(insumosData);
+          if (formulasData.length) setFormulas(formulasData);
+          if (clientesData.length) {
+            setClientes(clientesData.map((c: any) => ({
+              ...c,
+              dataCadastro: c.dataCadastro || c.createdAt || new Date().toISOString()
+            })) as any);
+          }
+          if (pedidosData.length) setPedidos(pedidosData);
+          if (ordensData.length) setOrdensProducao(ordensData);
+          if (estoqueData.length) setProdutosEstoque(estoqueData);
+          if (movimentosData.length) setMovimentosEstoque(movimentosData);
+          if (listasData.length) setListasPreco(listasData);
+          
+          if (precificacoesData.length) {
+            const precificacoesObj: Record<string, PrecificacaoData> = {};
+            precificacoesData.forEach(p => {
+              precificacoesObj[p.id] = p;
+            });
+            setPrecificacoes(precificacoesObj);
+          }
+
+          // Auto-sync if Supabase is empty but local storage has data
+          const localInsumos = localStorage.getItem('ohana_insumos');
+          if (insumosData.length === 0 && localInsumos && JSON.parse(localInsumos).length > 0) {
+            console.log('☁️ Supabase vazio, mas dados locais encontrados. Sincronizando para a nuvem...');
+            dataService.syncToCloud().then(() => {
+              console.log('✅ Sincronização automática concluída!');
+            });
+          }
+        } catch (error) {
+          console.error("Erro ao carregar dados do Supabase", error);
+        }
+      } else {
+        // Fallback for local storage if Supabase is not configured
+        const savedProfile = localStorage.getItem('userProfile');
+        if (savedProfile) {
+          const profile = JSON.parse(savedProfile);
+          setUserName(profile.nome);
+          setUserPhoto(profile.foto);
+          setProfileForm(prev => ({ ...prev, ...profile }));
+        }
+        
+        const savedPedidos = localStorage.getItem('pedidos');
+        if (savedPedidos) setPedidos(JSON.parse(savedPedidos));
+        
+        const savedOrdens = localStorage.getItem('ordensProducao');
+        if (savedOrdens) setOrdensProducao(JSON.parse(savedOrdens));
+        
+        const savedEstoque = localStorage.getItem('produtosEstoque');
+        if (savedEstoque) setProdutosEstoque(JSON.parse(savedEstoque));
+        
+        const savedMovimentos = localStorage.getItem('movimentosEstoque');
+        if (savedMovimentos) setMovimentosEstoque(JSON.parse(savedMovimentos));
+        
+        const savedClientes = localStorage.getItem('clientes');
+        if (savedClientes) setClientes(JSON.parse(savedClientes));
+        
+        const savedListas = localStorage.getItem('listasPreco');
+        if (savedListas) setListasPreco(JSON.parse(savedListas));
+        
+        const savedPrecificacoes = localStorage.getItem('precificacoes');
+        if (savedPrecificacoes) setPrecificacoes(JSON.parse(savedPrecificacoes));
+      }
+    };
     
-    // Load pedidos
-    const savedPedidos = localStorage.getItem('pedidos');
-    if (savedPedidos) setPedidos(JSON.parse(savedPedidos));
-    
-    // Load ordens
-    const savedOrdens = localStorage.getItem('ordensProducao');
-    if (savedOrdens) setOrdensProducao(JSON.parse(savedOrdens));
-    
-    // Load estoque
-    const savedEstoque = localStorage.getItem('produtosEstoque');
-    if (savedEstoque) setProdutosEstoque(JSON.parse(savedEstoque));
-    
-    const savedMovimentos = localStorage.getItem('movimentosEstoque');
-    if (savedMovimentos) setMovimentosEstoque(JSON.parse(savedMovimentos));
-    
-    // Load clientes
-    const savedClientes = localStorage.getItem('clientes');
-    if (savedClientes) setClientes(JSON.parse(savedClientes));
-    
-    // Load listas de preço
-    const savedListas = localStorage.getItem('listasPreco');
-    if (savedListas) setListasPreco(JSON.parse(savedListas));
-    
-    // Load precificacoes
-    const savedPrecificacoes = localStorage.getItem('precificacoes');
-    if (savedPrecificacoes) setPrecificacoes(JSON.parse(savedPrecificacoes));
-  }, []);
+    loadData();
+  }, [supabaseStatus]);
 
   // Save data on changes
   useEffect(() => {
-    localStorage.setItem('pedidos', JSON.stringify(pedidos));
+    if (isSupabaseConfigured() && pedidos.length > 0) {
+      dataService.generic.save('pedidos', pedidos).catch(err => console.error('Erro ao salvar pedidos:', err));
+    }
   }, [pedidos]);
 
   useEffect(() => {
-    localStorage.setItem('ordensProducao', JSON.stringify(ordensProducao));
+    if (isSupabaseConfigured() && ordensProducao.length > 0) {
+      dataService.generic.save('ordens_producao', ordensProducao).catch(err => console.error('Erro ao salvar ordens:', err));
+    }
   }, [ordensProducao]);
 
   useEffect(() => {
-    localStorage.setItem('produtosEstoque', JSON.stringify(produtosEstoque));
+    if (isSupabaseConfigured() && produtosEstoque.length > 0) {
+      dataService.generic.save('produtos_estoque', produtosEstoque).catch(err => console.error('Erro ao salvar estoque:', err));
+    }
   }, [produtosEstoque]);
 
   useEffect(() => {
-    localStorage.setItem('movimentosEstoque', JSON.stringify(movimentosEstoque));
+    if (isSupabaseConfigured() && movimentosEstoque.length > 0) {
+      dataService.generic.save('movimentacoes_estoque', movimentosEstoque).catch(err => console.error('Erro ao salvar movimentos:', err));
+    }
   }, [movimentosEstoque]);
 
   useEffect(() => {
-    localStorage.setItem('clientes', JSON.stringify(clientes));
-    
-    // Sincronizar com Supabase se configurado
     if (isSupabaseConfigured() && clientes.length > 0) {
       dataService.clientes.save(clientes.map(c => ({
         ...c,
@@ -355,11 +418,16 @@ export function App() {
   }, [clientes]);
 
   useEffect(() => {
-    localStorage.setItem('listasPreco', JSON.stringify(listasPreco));
+    if (isSupabaseConfigured() && listasPreco.length > 0) {
+      dataService.generic.save('listas_preco', listasPreco).catch(err => console.error('Erro ao salvar listas:', err));
+    }
   }, [listasPreco]);
 
   useEffect(() => {
-    localStorage.setItem('precificacoes', JSON.stringify(precificacoes));
+    if (isSupabaseConfigured() && Object.keys(precificacoes).length > 0) {
+      const precificacoesArray = Object.values(precificacoes);
+      dataService.generic.save('precificacao', precificacoesArray).catch(err => console.error('Erro ao salvar precificacoes:', err));
+    }
   }, [precificacoes]);
 
   // ============== INTEGRAÇÕES ==============
@@ -479,6 +547,7 @@ export function App() {
     }
     setCurrentUser(null);
     setIsAuthenticated(false);
+    setActiveModule('dashboard');
   };
 
   // BACKUP - Inclui INSUMOS e FÓRMULAS

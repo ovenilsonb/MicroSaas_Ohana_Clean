@@ -10,7 +10,7 @@ interface LoginProps {
 }
 
 export function Login({ onLogin }: LoginProps) {
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<'login' | 'signup' | 'recovery'>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +31,7 @@ export function Login({ onLogin }: LoginProps) {
     }
 
     try {
-      if (isLogin) {
+      if (mode === 'login') {
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email,
           password
@@ -85,7 +85,21 @@ export function Login({ onLogin }: LoginProps) {
             onLogin(user);
           }
         }
-      } else {
+      } else if (mode === 'signup') {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email,
+          password
+        });
+
+        if (authError) {
+          throw authError;
+        }
+
+        if (authData.user) {
+          alert('Conta criada com sucesso! Verifique seu e-mail para confirmar a conta (se necessário) ou faça login.');
+          setMode('login');
+        }
+      } else if (mode === 'recovery') {
         // Password recovery
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: window.location.origin,
@@ -96,7 +110,7 @@ export function Login({ onLogin }: LoginProps) {
         }
         
         alert('E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.');
-        setIsLogin(true);
+        setMode('login');
       }
     } catch (err: any) {
       console.error('Login error:', err);
@@ -151,7 +165,7 @@ export function Login({ onLogin }: LoginProps) {
           <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 shadow-2xl">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-xl font-semibold text-white">
-                {isLogin ? 'Acessar Conta' : 'Recuperar Senha'}
+                {mode === 'login' ? 'Acessar Conta' : mode === 'signup' ? 'Criar Conta' : 'Recuperar Senha'}
               </h2>
               <Shield className="w-5 h-5 text-blue-500" />
             </div>
@@ -181,19 +195,21 @@ export function Login({ onLogin }: LoginProps) {
                 </div>
               </div>
 
-              {isLogin && (
+              {mode !== 'recovery' && (
                 <div>
                   <div className="flex items-center justify-between mb-2 ml-1">
                     <label className="block text-sm font-medium text-gray-400">
                       Senha de Acesso
                     </label>
-                    <button 
-                      type="button"
-                      onClick={() => setIsLogin(false)}
-                      className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
-                    >
-                      Esqueceu a senha?
-                    </button>
+                    {mode === 'login' && (
+                      <button 
+                        type="button"
+                        onClick={() => setMode('recovery')}
+                        className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
+                      >
+                        Esqueceu a senha?
+                      </button>
+                    )}
                   </div>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -225,24 +241,33 @@ export function Login({ onLogin }: LoginProps) {
                 disabled={loading}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Aguarde...' : (isLogin ? 'Entrar no Sistema' : 'Enviar Link de Recuperação')}
+                {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar no Sistema' : mode === 'signup' ? 'Criar Conta' : 'Enviar Link de Recuperação')}
               </button>
 
-              {isLogin && (
-                <button
-                  type="button"
-                  onClick={() => setShowDbConfig(true)}
-                  className="w-full py-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-2xl shadow-lg transition-all active:scale-[0.98] mt-4 flex items-center justify-center gap-2 border border-gray-700"
-                >
-                  <Database className="w-5 h-5" />
-                  Configurar Banco de Dados
-                </button>
+              {mode === 'login' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setMode('signup')}
+                    className="w-full py-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-2xl shadow-lg transition-all active:scale-[0.98] mt-4 flex items-center justify-center gap-2 border border-gray-700"
+                  >
+                    Criar Nova Conta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowDbConfig(true)}
+                    className="w-full py-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-2xl shadow-lg transition-all active:scale-[0.98] mt-4 flex items-center justify-center gap-2 border border-gray-700"
+                  >
+                    <Database className="w-5 h-5" />
+                    Configurar Banco de Dados
+                  </button>
+                </>
               )}
 
-              {!isLogin && (
+              {mode !== 'login' && (
                 <button
                   type="button"
-                  onClick={() => setIsLogin(true)}
+                  onClick={() => setMode('login')}
                   className="w-full text-sm text-gray-400 hover:text-white transition-colors py-2"
                 >
                   Voltar para o Login

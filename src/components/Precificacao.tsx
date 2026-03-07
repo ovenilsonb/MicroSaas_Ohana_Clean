@@ -163,7 +163,7 @@ export function Precificacao({
   // Funções de cálculo
   const calcularCustoTotal = (formula: Formula) => {
     if (!formula) return 0;
-    return formula.insumos.reduce((sum, i) => sum + (i.quantidade * i.valorUnitario), 0);
+    return (formula.insumos || []).reduce((sum, i) => sum + (i.quantidade * i.valorUnitario), 0);
   };
 
   const calcularCustoUnidade = (formula: Formula) => {
@@ -179,7 +179,7 @@ export function Precificacao({
   const getGrupo = (grupoId: string) => grupos.find(g => g.id === grupoId);
 
   const getFormulaVariantInfo = (formula: Formula) => {
-    const insumosComVariantes = formula.insumos.filter(fi => {
+    const insumosComVariantes = (formula.insumos || []).filter(fi => {
       const insumo = insumosData.find(i => i.id === fi.insumoId);
       return insumo?.variantes && insumo.variantes.length > 0;
     });
@@ -189,7 +189,7 @@ export function Precificacao({
     let custoMin = 0;
     let custoMax = 0;
     
-    formula.insumos.forEach(fi => {
+    (formula.insumos || []).forEach(fi => {
       const insumo = insumosData.find(i => i.id === fi.insumoId);
       if (insumo?.variantes && insumo.variantes.length > 0) {
         const precos = insumo.variantes.map((v: any) => v.valorUnitario);
@@ -218,13 +218,13 @@ export function Precificacao({
     
     const variantes: { id: string; nome: string; custoUnitario: number }[] = [];
     
-    formula.insumos.forEach(fi => {
+    (formula.insumos || []).forEach(fi => {
       const insumo = insumosData.find(i => i.id === fi.insumoId);
       if (insumo?.variantes && insumo.variantes.length > 0) {
         insumo.variantes.forEach((v: any) => {
           // Calcular custo da fórmula com esta variante
           let custoTotal = 0;
-          formula.insumos.forEach(fi2 => {
+          (formula.insumos || []).forEach(fi2 => {
             if (fi2.insumoId === insumo.id) {
               custoTotal += fi.quantidade * v.valorUnitario;
             } else {
@@ -393,7 +393,7 @@ export function Precificacao({
         descricao: lista.descricao,
         aplicarA: lista.aplicarA,
         ativo: lista.ativo,
-        regras: [...lista.regras]
+        regras: [...(lista.regras || [])]
       });
     } else {
       resetListaForm();
@@ -551,7 +551,7 @@ export function Precificacao({
       id: `LP-${Date.now()}`,
       nome: `${lista.nome} (Cópia)`,
       dataCriacao: new Date().toISOString(),
-      regras: lista.regras.map(r => ({ ...r, id: `RG-${Date.now()}-${Math.random()}` }))
+      regras: (lista.regras || []).map(r => ({ ...r, id: `RG-${Date.now()}-${Math.random()}` }))
     };
     setListasPreco((prev: ListaPrecoAvancada[]) => [...prev, novaLista]);
   };
@@ -912,7 +912,7 @@ export function Precificacao({
                   <div className="flex items-center gap-2 mb-4">
                     <div className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 dark:bg-gray-700/50 rounded-lg">
                       <Calculator size={14} className="text-gray-500 dark:text-gray-400" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">{lista.regras.length}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{(lista.regras || []).length}</span>
                       <span className="text-xs text-gray-500 dark:text-gray-400">regras</span>
                     </div>
                   </div>
@@ -1810,7 +1810,7 @@ export function Precificacao({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700/30">
-                  {selectedListaView.regras.map((regra) => (
+                  {(selectedListaView.regras || []).map((regra) => (
                     <tr key={regra.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                       <td className="px-4 py-3">
                         <p className="font-medium text-gray-900 dark:text-white">
@@ -1853,7 +1853,7 @@ export function Precificacao({
                   ))}
                 </tbody>
               </table>
-              {selectedListaView.regras.length === 0 && (
+              {(selectedListaView.regras || []).length === 0 && (
                 <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                   <Calculator size={40} className="mx-auto mb-2 opacity-50" />
                   <p>Nenhuma regra de preço cadastrada</p>

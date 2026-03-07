@@ -243,7 +243,7 @@ export function Vendas({
   };
 
   const calcularCustoUnidade = (formula: Formula) => {
-    const custoTotal = formula.insumos.reduce((sum, i) => sum + (i.quantidade * i.valorUnitario), 0);
+    const custoTotal = (formula.insumos || []).reduce((sum, i) => sum + (i.quantidade * i.valorUnitario), 0);
     return formula.rendimento > 0 ? custoTotal / formula.rendimento : 0;
   };
 
@@ -517,7 +517,7 @@ export function Vendas({
       
       const batchesRequired = deficitInfo.deficit / formula.rendimento;
       
-      for (const insumo of formula.insumos) {
+      for (const insumo of (formula.insumos || [])) {
         if (!requiredInsumos[insumo.insumoId]) {
           requiredInsumos[insumo.insumoId] = 0;
         }

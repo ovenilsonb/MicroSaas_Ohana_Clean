@@ -108,7 +108,7 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
 
 
   const calcularCustoTotal = (insumos: FormulaInsumo[]) => {
-    return insumos.reduce((sum, i) => sum + (i.quantidade * i.valorUnitario), 0);
+    return (insumos || []).reduce((sum, i) => sum + (i.quantidade * i.valorUnitario), 0);
   };
 
   const calcularCustoUnidade = (formula: Formula) => {
@@ -568,7 +568,7 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
                     </div>
 
                     <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
-                      <span>{formula.insumos.length} insumo(s)</span>
+                      <span>{(formula.insumos || []).length} insumo(s)</span>
                       <span className="font-medium text-gray-900 dark:text-white">
                         Total: R$ {custoTotal.toFixed(2)}
                       </span>
@@ -1142,11 +1142,11 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
 
             <div>
               <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-                Composição ({selectedFormula.insumos.length} insumos)
+                Composição ({(selectedFormula.insumos || []).length} insumos)
               </h4>
               <div className="space-y-2">
                 {/* Químicos primeiro */}
-                {selectedFormula.insumos.filter(i => i.quimico).map((insumo) => (
+                {(selectedFormula.insumos || []).filter(i => i.quimico).map((insumo) => (
                   <div key={insumo.id} className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
                     <div className="flex items-center gap-2">
                       <FlaskConical className="w-4 h-4 text-amber-500" />
@@ -1161,7 +1161,7 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
                   </div>
                 ))}
                 {/* Não-químicos depois */}
-                {selectedFormula.insumos.filter(i => !i.quimico).map((insumo) => (
+                {(selectedFormula.insumos || []).filter(i => !i.quimico).map((insumo) => (
                   <div key={insumo.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
                     <div className="flex items-center gap-2">
                       <Flag className="w-4 h-4 text-blue-500" />
@@ -1334,7 +1334,7 @@ function ProporcaoTab({
 
   const calcularCustoTotal = () => {
     if (!selectedFormula) return 0;
-    return selectedFormula.insumos.reduce((sum, i) => {
+    return (selectedFormula.insumos || []).reduce((sum, i) => {
       const qtd = getQuantidadeAjustada(i);
       return sum + (qtd * i.valorUnitario);
     }, 0);
@@ -1421,7 +1421,7 @@ function ProporcaoTab({
     const dataStr = now.toLocaleString('pt-BR');
     
     // Calcula as novas quantidades base (dividindo pelo fator)
-    const insumosAtualizados = selectedFormula.insumos.map(insumo => {
+    const insumosAtualizados = (selectedFormula.insumos || []).map(insumo => {
       const qtdAjustada = getQuantidadeAjustada(insumo);
       const qtdOriginal = insumo.quantidade;
       const novaQtdBase = fator > 0 ? qtdAjustada / fator : insumo.quantidade;
@@ -1606,7 +1606,7 @@ function ProporcaoTab({
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {/* Químicos */}
-              {selectedFormula.insumos.filter(i => i.quimico).map((insumo) => {
+              {(selectedFormula.insumos || []).filter(i => i.quimico).map((insumo) => {
                 const qtdAjustada = getQuantidadeAjustada(insumo);
                 const total = qtdAjustada * insumo.valorUnitario;
                 const wasEdited = insumosAjustados[insumo.id] !== undefined;
@@ -1641,7 +1641,7 @@ function ProporcaoTab({
                 );
               })}
               {/* Não-químicos */}
-              {selectedFormula.insumos.filter(i => !i.quimico).map((insumo) => {
+              {(selectedFormula.insumos || []).filter(i => !i.quimico).map((insumo) => {
                 const qtdAjustada = getQuantidadeAjustada(insumo);
                 const total = qtdAjustada * insumo.valorUnitario;
                 const wasEdited = insumosAjustados[insumo.id] !== undefined;

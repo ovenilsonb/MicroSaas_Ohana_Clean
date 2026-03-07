@@ -105,15 +105,14 @@ class DataServiceImpl {
               nome: insumoData.nome,
               codigo: insumoData.codigo || null,
               unidade: insumoData.unidade,
-              valor: insumoData.valorUnitario || 0, // banco usa 'valor' não 'valor_unitario'
+              valor_unitario: insumoData.valorUnitario || 0,
               fornecedor: insumoData.fornecedor || null,
               estoque: insumoData.estoque || 0,
               estoque_minimo: insumoData.estoqueMinimo || 0,
               validade: insumoData.validade || null,
               quimico: insumoData.quimico || false,
-              imagem: insumoData.imagem || null, // banco usa 'imagem' não 'foto'
+              imagem: insumoData.imagem || null,
               validade_indeterminada: insumoData.validadeIndeterminada || false,
-              status: (insumoData as any).status || 'ativo',
             };
             
             console.log('📤 Enviando insumo:', supabaseData);
@@ -142,7 +141,7 @@ class DataServiceImpl {
                 insumo_id: insumo.id,
                 nome: v.nome,
                 codigo: v.codigo || null,
-                valor: v.valorUnitario || 0, // banco usa 'valor' não 'valor_unitario'
+                valor_unitario: v.valorUnitario || 0,
               }));
               
               const { error: varError } = await supabase
@@ -186,7 +185,7 @@ class DataServiceImpl {
                 nome: insumoData.nome,
                 codigo: insumoData.codigo || null,
                 unidade: insumoData.unidade,
-                valor: insumoData.valorUnitario || 0,
+                valor_unitario: insumoData.valorUnitario || 0,
                 fornecedor: insumoData.fornecedor || null,
                 estoque: insumoData.estoque || 0,
                 estoque_minimo: insumoData.estoqueMinimo || 0,
@@ -194,7 +193,6 @@ class DataServiceImpl {
                 quimico: insumoData.quimico || false,
                 imagem: insumoData.imagem || null,
                 validade_indeterminada: insumoData.validadeIndeterminada || false,
-                status: (insumoData as any).status || 'ativo',
               };
               
               const { error: insertError } = await supabase.from('insumos').insert(supabaseData);
@@ -207,7 +205,7 @@ class DataServiceImpl {
                   insumo_id: insumo.id,
                   nome: v.nome,
                   codigo: v.codigo || null,
-                  valor: v.valorUnitario || 0,
+                  valor_unitario: v.valorUnitario || 0,
                 }));
                 const { error: varError } = await supabase.from('insumo_variantes').insert(variantesData);
                 if (varError) console.error('Erro variantes:', varError);
@@ -260,7 +258,10 @@ class DataServiceImpl {
         try {
           const { data, error } = await supabase
             .from('formulas')
-            .select('*')
+            .select(`
+              *,
+              formula_insumos (*)
+            `)
             .order('nome');
           
           if (error) throw error;
@@ -271,7 +272,7 @@ class DataServiceImpl {
               nome: formula.nome,
               codigo: formula.codigo,
               descricao: formula.descricao,
-              grupoId: formula.grupo,
+              grupoId: formula.grupo_id,
               pesoVolume: formula.peso_volume,
               unidade: formula.unidade,
               rendimento: formula.rendimento,
@@ -279,11 +280,22 @@ class DataServiceImpl {
               status: formula.status,
               listaInsumo: formula.lista_insumo,
               prefixoLote: formula.prefixo_lote,
-              custoTotal: formula.custo_total,
+              custoTotal: formula.custo_total || 0,
               createdAt: formula.created_at,
               updatedAt: formula.updated_at,
-              insumos: formula.insumos || [],
-              historico: formula.historico || [],
+              insumos: formula.formula_insumos?.map((i: any) => ({
+                id: i.id,
+                insumoId: i.insumo_id,
+                varianteId: i.variante_id,
+                nome: i.nome,
+                unidade: i.unidade,
+                quantidade: i.quantidade,
+                custo: i.custo || 0,
+                quimico: i.quimico || false,
+                valorUnitario: i.valor_unitario || 0,
+                ordem: i.ordem || 0
+              })) || [],
+              historico: [],
             }));
           }
           return data || [];
@@ -310,23 +322,19 @@ class DataServiceImpl {
           for (const formula of formulas) {
             const { insumos: formulaInsumos, historico, ...formulaData } = formula;
             
-            // COLUNAS CORRETAS DO BANCO - 'grupo' não 'grupo_id'
             const supabaseData: Record<string, any> = {
               id: formulaData.id,
               nome: formulaData.nome,
               codigo: formulaData.codigo || null,
               descricao: formulaData.descricao || null,
-              grupo: formulaData.grupoId || null, // banco usa 'grupo' não 'grupo_id'
+              grupo_id: formulaData.grupoId || null,
               peso_volume: formulaData.pesoVolume || null,
               unidade: formulaData.unidade || null,
               rendimento: formulaData.rendimento || 1,
-              custo_total: (formulaData as any).custoTotal || 0,
               observacoes: formulaData.observacoes || null,
               status: formulaData.status || 'rascunho',
               lista_insumo: formulaData.listaInsumo || null,
               prefixo_lote: formulaData.prefixoLote || null,
-              insumos: JSON.stringify(formulaInsumos || []), // Salvar como JSON
-              historico: JSON.stringify(historico || []), // Salvar como JSON
             };
             
             console.log('📤 Enviando fórmula:', supabaseData);
@@ -338,6 +346,25 @@ class DataServiceImpl {
             if (error) {
               console.error('❌ Erro ao salvar fórmula:', error);
               throw error;
+            }
+
+            if (formulaInsumos && formulaInsumos.length > 0) {
+              await supabase.from('formula_insumos').delete().eq('formula_id', formula.id);
+              const insumosData = formulaInsumos.map((i: any) => ({
+                id: i.id || `${formula.id}-${i.insumoId}`,
+                formula_id: formula.id,
+                insumo_id: i.insumoId,
+                variante_id: i.varianteId || null,
+                nome: i.nome,
+                unidade: i.unidade || null,
+                quantidade: i.quantidade || 0,
+                custo: i.custo || 0,
+                valor_unitario: i.valorUnitario || 0,
+                quimico: i.quimico || false,
+                ordem: i.ordem || 0
+              }));
+              const { error: insumosError } = await supabase.from('formula_insumos').insert(insumosData);
+              if (insumosError) console.error('Erro ao salvar insumos da fórmula:', insumosError);
             }
             
             console.log('✅ Fórmula salva:', formulaData.nome);
@@ -373,17 +400,14 @@ class DataServiceImpl {
                 nome: formulaData.nome,
                 codigo: formulaData.codigo || null,
                 descricao: formulaData.descricao || null,
-                grupo: formulaData.grupoId || null,
+                grupo_id: formulaData.grupoId || null,
                 peso_volume: formulaData.pesoVolume || null,
                 unidade: formulaData.unidade || null,
                 rendimento: formulaData.rendimento || 1,
-                custo_total: (formulaData as any).custoTotal || 0,
                 observacoes: formulaData.observacoes || null,
                 status: formulaData.status || 'rascunho',
                 lista_insumo: formulaData.listaInsumo || null,
                 prefixo_lote: formulaData.prefixoLote || null,
-                insumos: JSON.stringify(insumos || []),
-                historico: JSON.stringify(historico || []),
               };
             });
             
@@ -632,10 +656,22 @@ class DataServiceImpl {
       const insumosLocal = localStorage.getItem('ohana_insumos');
       const formulasLocal = localStorage.getItem('ohana_formulas');
       const clientesLocal = localStorage.getItem('ohana_clientes');
+      const pedidosLocal = localStorage.getItem('pedidos');
+      const ordensLocal = localStorage.getItem('ordensProducao');
+      const estoqueLocal = localStorage.getItem('produtosEstoque');
+      const movimentosLocal = localStorage.getItem('movimentosEstoque');
+      const listasLocal = localStorage.getItem('listasPreco');
+      const precificacoesLocal = localStorage.getItem('precificacoes');
       
       const insumos = insumosLocal ? JSON.parse(insumosLocal) : [];
       const formulas = formulasLocal ? JSON.parse(formulasLocal) : [];
       const clientesRaw = clientesLocal ? JSON.parse(clientesLocal) : [];
+      const pedidos = pedidosLocal ? JSON.parse(pedidosLocal) : [];
+      const ordens = ordensLocal ? JSON.parse(ordensLocal) : [];
+      const estoque = estoqueLocal ? JSON.parse(estoqueLocal) : [];
+      const movimentos = movimentosLocal ? JSON.parse(movimentosLocal) : [];
+      const listas = listasLocal ? JSON.parse(listasLocal) : [];
+      const precificacoes = precificacoesLocal ? Object.values(JSON.parse(precificacoesLocal)) : [];
       
       // Converter clientes para o formato correto
       const clientes = clientesRaw.map((c: any) => ({
@@ -648,6 +684,13 @@ class DataServiceImpl {
       const insumosResult = await this.insumos.syncFull(insumos);
       const formulasResult = await this.formulas.syncFull(formulas);
       const clientesResult = await this.clientes.syncFull(clientes);
+      
+      if (pedidos.length) await this.generic.save('pedidos', pedidos);
+      if (ordens.length) await this.generic.save('ordens_producao', ordens);
+      if (estoque.length) await this.generic.save('produtos_estoque', estoque);
+      if (movimentos.length) await this.generic.save('movimentacoes_estoque', movimentos);
+      if (listas.length) await this.generic.save('listas_preco', listas);
+      if (precificacoes.length) await this.generic.save('precificacao', precificacoes as any[]);
       
       const allSuccess = insumosResult.success && formulasResult.success && clientesResult.success;
       
@@ -701,6 +744,39 @@ class DataServiceImpl {
     };
   }
   
+  // ==================== GENERIC ====================
+  generic = {
+    getAll: async <T>(table: string): Promise<T[]> => {
+      const supabase = getSupabase();
+      if (supabase && await this.isConnected()) {
+        try {
+          const { data, error } = await supabase.from(table).select('*');
+          if (error) throw error;
+          return data as T[];
+        } catch (error) {
+          console.error(`Erro ao buscar ${table} do Supabase:`, error);
+        }
+      }
+      return [];
+    },
+    save: async <T extends { id: string }>(table: string, items: T[]): Promise<{ success: boolean; error?: string }> => {
+      const supabase = getSupabase();
+      if (supabase && await this.isConnected()) {
+        try {
+          for (const item of items) {
+            const { error } = await supabase.from(table).upsert(item, { onConflict: 'id' });
+            if (error) throw error;
+          }
+          return { success: true };
+        } catch (error) {
+          console.error(`Erro ao salvar ${table} no Supabase:`, error);
+          return { success: false, error: (error as Error).message };
+        }
+      }
+      return { success: false, error: 'Não conectado' };
+    }
+  };
+
   // Limpa o cache de conexão
   clearConnectionCache(): void {
     this.connectionCache = null;

@@ -8,7 +8,7 @@ interface PricingReportProps {
 }
 
 export const PricingReport: React.FC<PricingReportProps & { companyName?: string; companyLogo?: string; config?: any }> = ({ formula, precificacao, companyName, companyLogo, config }) => {
-  const custoTotal = formula.insumos.reduce((acc, insumo) => acc + (insumo.quantidade * insumo.valorUnitario), 0);
+  const custoTotal = (formula.insumos || []).reduce((acc, insumo) => acc + (insumo.quantidade * insumo.valorUnitario), 0);
   const rendimento = formula.rendimento || 1;
   const custoPorLitro = custoTotal / rendimento;
   

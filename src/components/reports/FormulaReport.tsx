@@ -7,9 +7,9 @@ interface FormulaReportProps {
 }
 
 export const FormulaReport: React.FC<FormulaReportProps & { companyName?: string; companyLogo?: string; config?: any }> = ({ formula, companyName, companyLogo, config }) => {
-  const custoTotal = formula.insumos.reduce((acc, insumo) => acc + (insumo.quantidade * insumo.valorUnitario), 0);
+  const custoTotal = (formula.insumos || []).reduce((acc, insumo) => acc + (insumo.quantidade * insumo.valorUnitario), 0);
   const custoUnidade = custoTotal / (formula.rendimento || 1);
-  const totalChemicalOriginal = formula.insumos.reduce((acc, i) => i.quimico ? acc + i.quantidade : acc, 0);
+  const totalChemicalOriginal = (formula.insumos || []).reduce((acc, i) => i.quimico ? acc + i.quantidade : acc, 0);
 
   return (
     <ReportTemplate title="Ficha Técnica de Produção" companyName={companyName} companyLogo={companyLogo} config={config}>
@@ -41,7 +41,7 @@ export const FormulaReport: React.FC<FormulaReportProps & { companyName?: string
           </div>
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
             <p className="text-[9px] uppercase tracking-widest text-slate-400 font-bold mb-1">Total de Insumos</p>
-            <p className="text-lg font-bold text-slate-700">{formula.insumos.length} itens</p>
+            <p className="text-lg font-bold text-slate-700">{(formula.insumos || []).length} itens</p>
           </div>
         </div>
 
@@ -60,7 +60,7 @@ export const FormulaReport: React.FC<FormulaReportProps & { companyName?: string
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {formula.insumos.map(insumo => {
+              {(formula.insumos || []).map(insumo => {
                 const percOriginal = insumo.quimico && totalChemicalOriginal > 0 ? (insumo.quantidade / totalChemicalOriginal) * 100 : 0;
 
                 return (

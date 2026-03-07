@@ -470,7 +470,7 @@ export function Producao({ ordensProducao, setOrdensProducao, pedidos: _pedidos,
                     Composição para {selectedOrdem.quantidade} unidade(s)
                   </h4>
                   <div className="space-y-2">
-                    {formula.insumos.map((insumo) => {
+                    {(formula.insumos || []).map((insumo) => {
                       const qtdTotal = insumo.quantidade * (selectedOrdem.quantidade / formula.rendimento);
                       return (
                         <div key={insumo.id} className={`flex items-center justify-between p-3 rounded-xl ${

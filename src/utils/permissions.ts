@@ -1,4 +1,4 @@
-import { User, AccessGroup, ActionType } from './types';
+import { User, AccessGroup, ActionType } from '../types';
 
 export const hasPermission = (
   user: User | null,

@@ -12,10 +12,10 @@ export const ProportionReport: React.FC<ProportionReportProps & { companyName?: 
   const fator = quantidade / (formula.rendimento || 1);
   const getQuantidadeAjustada = (insumo: any) => insumo.quantidade * fator;
   
-  const totalChemicalOriginal = formula.insumos.reduce((acc, i) => i.quimico ? acc + i.quantidade : acc, 0);
+  const totalChemicalOriginal = (formula.insumos || []).reduce((acc, i) => i.quimico ? acc + i.quantidade : acc, 0);
 
   const calcularCustoTotal = () => {
-    return formula.insumos.reduce((sum, i) => {
+    return (formula.insumos || []).reduce((sum, i) => {
       const qtd = getQuantidadeAjustada(i);
       return sum + qtd * i.valorUnitario;
     }, 0);
@@ -68,7 +68,7 @@ export const ProportionReport: React.FC<ProportionReportProps & { companyName?: 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {formula.insumos.map(insumo => {
+              {(formula.insumos || []).map(insumo => {
                 const qtdAjustada = getQuantidadeAjustada(insumo);
                 const percOriginal = insumo.quimico && totalChemicalOriginal > 0 ? (insumo.quantidade / totalChemicalOriginal) * 100 : 0;
 
