@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { hasPermission } from './utils/permissions';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
@@ -11,10 +12,11 @@ import { Estoque, ProdutoEstoque, MovimentoEstoque } from './components/Estoque'
 import Clientes from './components/Clientes';
 import { Relatorios } from './components/Relatorios';
 import { Anotacoes } from './components/Anotacoes';
+import { Usuarios } from './components/Usuarios';
 import { Modal } from './components/Modal';
 import { Login } from './components/Login';
 import SupabaseConfig from './components/SupabaseConfig';
-import { Insumo, Formula, User as UserType } from './types';
+import { Insumo, Formula, User as UserType, AccessGroup } from './types';
 import { 
   Download, 
   Upload,
@@ -193,6 +195,10 @@ export function App() {
   
   // Precificações
   const [precificacoes, setPrecificacoes] = useState<Record<string, PrecificacaoData>>({});
+  
+  // Usuários e Grupos
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [groups, setGroups] = useState<AccessGroup[]>([]);
   
   // Supabase Status
   const [supabaseStatus, setSupabaseStatus] = useState<'connected' | 'disconnected' | 'local'>('local');
@@ -577,9 +583,22 @@ export function App() {
       case 'dashboard':
         return <Dashboard darkMode={isDark} formulas={formulas} insumos={insumos} pedidos={pedidos} />;
       case 'insumos':
-        return <Insumos insumos={insumos} setInsumos={setInsumos} canAdd={checkLimit('insumos', insumos.length)} />;
+        return <Insumos 
+          insumos={insumos} 
+          setInsumos={setInsumos} 
+          canAdd={checkLimit('insumos', insumos.length) && hasPermission(currentUser, groups, 'insumos', 'create')} 
+          canEdit={hasPermission(currentUser, groups, 'insumos', 'edit')}
+          canDelete={hasPermission(currentUser, groups, 'insumos', 'delete')}
+        />;
       case 'formulas':
-        return <Formulas formulas={formulas} setFormulas={setFormulas} insumos={insumos} canAdd={checkLimit('formulas', formulas.length)} />;
+        return <Formulas 
+          formulas={formulas} 
+          setFormulas={setFormulas} 
+          insumos={insumos} 
+          canAdd={checkLimit('formulas', formulas.length) && hasPermission(currentUser, groups, 'formulas', 'create')} 
+          canEdit={hasPermission(currentUser, groups, 'formulas', 'edit')}
+          canDelete={hasPermission(currentUser, groups, 'formulas', 'delete')}
+        />;
       case 'precificacao':
         return (
           <Precificacao 
@@ -647,6 +666,8 @@ export function App() {
         );
       case 'anotacoes':
         return <Anotacoes />;
+      case 'usuarios':
+        return <Usuarios users={users} setUsers={setUsers} groups={groups} setGroups={setGroups} currentUser={currentUser} />;
       case 'relatorios':
         return (
           <Relatorios 
@@ -740,6 +761,8 @@ export function App() {
         companyName={companyName}
         companyLogo={companyLogo}
         onLogout={handleLogout}
+        currentUser={currentUser}
+        groups={groups}
       />
 
       <Header

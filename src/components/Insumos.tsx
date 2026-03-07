@@ -29,12 +29,14 @@ interface InsumosProps {
   insumos: Insumo[];
   setInsumos: React.Dispatch<React.SetStateAction<Insumo[]>>;
   canAdd?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 type ViewMode = 'list' | 'grid';
 type SortMode = 'az' | 'za' | 'asc' | 'desc';
 
-export function Insumos({ insumos, setInsumos, canAdd = true }: InsumosProps) {
+export function Insumos({ insumos, setInsumos, canAdd = true, canEdit = true, canDelete = true }: InsumosProps) {
   // Estados locais apenas para UI
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -403,24 +405,30 @@ export function Insumos({ insumos, setInsumos, canAdd = true }: InsumosProps) {
                         >
                           <Eye className="w-4 h-4 text-gray-500" />
                         </button>
-                        <button
-                          onClick={() => handleOpenEdit(insumo)}
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        >
-                          <Edit2 className="w-4 h-4 text-blue-500" />
-                        </button>
-                        <button
-                          onClick={() => handleDuplicate(insumo)}
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        >
-                          <Copy className="w-4 h-4 text-purple-500" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(insumo.id)}
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => handleOpenEdit(insumo)}
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4 text-blue-500" />
+                          </button>
+                        )}
+                        {canAdd && (
+                          <button
+                            onClick={() => handleDuplicate(insumo)}
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          >
+                            <Copy className="w-4 h-4 text-purple-500" />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(insumo.id)}
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -495,24 +503,30 @@ export function Insumos({ insumos, setInsumos, canAdd = true }: InsumosProps) {
                   >
                     <Eye className="w-4 h-4 text-gray-500" />
                   </button>
-                  <button
-                    onClick={() => handleOpenEdit(insumo)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <Edit2 className="w-4 h-4 text-blue-500" />
-                  </button>
-                  <button
-                    onClick={() => handleDuplicate(insumo)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <Copy className="w-4 h-4 text-purple-500" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(insumo.id)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </button>
+                  {canEdit && (
+                    <button
+                      onClick={() => handleOpenEdit(insumo)}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    >
+                      <Edit2 className="w-4 h-4 text-blue-500" />
+                    </button>
+                  )}
+                  {canAdd && (
+                    <button
+                      onClick={() => handleDuplicate(insumo)}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    >
+                      <Copy className="w-4 h-4 text-purple-500" />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDelete(insumo.id)}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  )}
                 </div>
               </div>
             );

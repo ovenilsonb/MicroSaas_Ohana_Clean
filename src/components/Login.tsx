@@ -3,6 +3,7 @@ import { Lock, Mail, Shield, AlertCircle, Eye, EyeOff, Building2, Database } fro
 import { User as UserType } from '../types';
 import { Modal } from './Modal';
 import SupabaseConfig from './SupabaseConfig';
+import { getSupabase } from '../lib/supabase';
 
 interface LoginProps {
   onLogin: (user: UserType) => void;
@@ -11,33 +12,101 @@ interface LoginProps {
 export function Login({ onLogin }: LoginProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('admin@ohanaclean.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showDbConfig, setShowDbConfig] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
-    // Simulação de login independente
-    if (email === 'admin@ohanaclean.com' && password === 'admin123') {
-      const adminUser: UserType = {
-        id: 'admin-1',
-        email: 'admin@ohanaclean.com',
-        nome: 'Administrador Ohana',
-        funcao: 'Diretor Geral',
-        role: 'admin',
-        limits: {
-          insumos: 9999,
-          formulas: 9999,
-          relatorios: 9999,
-          cadastros: 9999
+    const supabase = getSupabase();
+    if (!supabase) {
+      setError('Banco de dados não configurado. Clique em "Configurar Banco de Dados".');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      if (isLogin) {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (authError) {
+          throw authError;
         }
-      };
-      onLogin(adminUser);
-    } else {
-      setError('E-mail ou senha incorretos.');
+
+        if (authData.user) {
+          // Fetch user profile
+          const { data: profileData, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+          if (profileError) {
+            console.error('Erro ao buscar perfil:', profileError);
+            // Fallback if profile doesn't exist yet
+            const fallbackUser: UserType = {
+              id: authData.user.id,
+              email: authData.user.email || email,
+              nome: authData.user.user_metadata?.full_name || email.split('@')[0],
+              funcao: 'Usuário',
+              role: 'operador',
+              limits: {
+                insumos: 100,
+                formulas: 100,
+                relatorios: 100,
+                cadastros: 100
+              }
+            };
+            onLogin(fallbackUser);
+          } else {
+            const user: UserType = {
+              id: profileData.id,
+              email: profileData.email,
+              nome: profileData.nome,
+              funcao: profileData.funcao || 'Usuário',
+              role: profileData.role,
+              roleId: profileData.role_id,
+              avatar: profileData.avatar,
+              limits: profileData.limits || {
+                insumos: 100,
+                formulas: 100,
+                relatorios: 100,
+                cadastros: 100
+              }
+            };
+            onLogin(user);
+          }
+        }
+      } else {
+        // Password recovery
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin,
+        });
+        
+        if (resetError) {
+          throw resetError;
+        }
+        
+        alert('E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.');
+        setIsLogin(true);
+      }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      if (err.message === 'Invalid login credentials') {
+        setError('E-mail ou senha incorretos.');
+      } else {
+        setError(err.message || 'Ocorreu um erro ao tentar fazer login.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -153,9 +222,10 @@ export function Login({ onLogin }: LoginProps) {
 
               <button
                 type="submit"
-                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] mt-4"
+                disabled={loading}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLogin ? 'Entrar no Sistema' : 'Enviar Link de Recuperação'}
+                {loading ? 'Aguarde...' : (isLogin ? 'Entrar no Sistema' : 'Enviar Link de Recuperação')}
               </button>
 
               {isLogin && (

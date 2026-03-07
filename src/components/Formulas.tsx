@@ -37,13 +37,15 @@ interface FormulasProps {
   setFormulas: React.Dispatch<React.SetStateAction<Formula[]>>;
   insumos: Insumo[];
   canAdd?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 type ViewMode = 'list' | 'grid';
 type SortMode = 'az' | 'za' | 'asc' | 'desc';
 type TabType = 'formulas' | 'grupos' | 'proporcao';
 
-export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: FormulasProps) {
+export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdit = true, canDelete = true }: FormulasProps) {
   // Grupos ainda usa estado interno (pode ser movido depois)
   const [grupos, setGrupos] = useState<Grupo[]>(initialGrupos);
   const [activeTab, setActiveTab] = useState<TabType>('formulas');
@@ -581,27 +583,35 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
                         <Eye className="w-4 h-4 text-gray-500" />
                       </button>
 
-                      <button
-                        onClick={() => handleOpenEdit(formula)}
-                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        title="Editar"
-                      >
-                        <Edit2 className="w-4 h-4 text-blue-500" />
-                      </button>
-                      <button
-                        onClick={() => handleDuplicate(formula)}
-                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        title="Duplicar"
-                      >
-                        <Copy className="w-4 h-4 text-purple-500" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(formula.id)}
-                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        title="Excluir"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => handleOpenEdit(formula)}
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          title="Editar"
+                        >
+                          <Edit2 className="w-4 h-4 text-blue-500" />
+                        </button>
+                      )}
+                      
+                      {canAdd && (
+                        <button
+                          onClick={() => handleDuplicate(formula)}
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          title="Duplicar"
+                        >
+                          <Copy className="w-4 h-4 text-purple-500" />
+                        </button>
+                      )}
+                      
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(formula.id)}
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -701,13 +711,15 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
       {activeTab === 'grupos' && (
         <div className="space-y-6">
           <div className="flex justify-end">
-            <button
-              onClick={handleOpenNewGrupo}
-              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              Novo Grupo
-            </button>
+            {canAdd && (
+              <button
+                onClick={handleOpenNewGrupo}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                Novo Grupo
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -730,18 +742,22 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true }: Form
                   </div>
 
                   <div className="flex items-center justify-end gap-1">
-                    <button
-                      onClick={() => handleOpenEditGrupo(grupo)}
-                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                    >
-                      <Edit2 className="w-4 h-4 text-blue-500" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteGrupo(grupo.id)}
-                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </button>
+                    {canEdit && (
+                      <button
+                        onClick={() => handleOpenEditGrupo(grupo)}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      >
+                        <Edit2 className="w-4 h-4 text-blue-500" />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDeleteGrupo(grupo.id)}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

@@ -217,6 +217,28 @@ export interface MovimentacaoEstoque {
 }
 
 // Tipos para Usuários e Limites
+export type ActionType = 'view' | 'create' | 'edit' | 'delete' | 'copy';
+
+export interface RolePermissions {
+  insumos: ActionType[];
+  formulas: ActionType[];
+  precificacao: ActionType[];
+  vendas: ActionType[];
+  producao: ActionType[];
+  estoque: ActionType[];
+  clientes: ActionType[];
+  relatorios: ActionType[];
+  configuracoes: ActionType[];
+  usuarios: ActionType[];
+}
+
+export interface AccessGroup {
+  id: string;
+  name: string;
+  description: string;
+  permissions: RolePermissions;
+}
+
 export interface UserLimits {
   insumos: number;
   formulas: number;
@@ -231,6 +253,7 @@ export interface User {
   funcao: string;
   avatar?: string;
   role: 'admin' | 'operador' | 'visualizador';
+  roleId?: string;
   limits: UserLimits;
 }
 

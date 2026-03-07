@@ -14,9 +14,12 @@ import {
   StickyNote,
   LogOut,
   FileText,
+  ShieldCheck,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { currentVersion } from '../version';
+import { User, AccessGroup } from '../types';
+import { getVisibleModules } from '../utils/permissions';
 
 interface SidebarProps {
   activeModule: string;
@@ -27,6 +30,8 @@ interface SidebarProps {
   companyName?: string;
   companyLogo?: string;
   onLogout?: () => void;
+  currentUser: User | null;
+  groups: AccessGroup[];
 }
 
 const menuItems = [
@@ -43,7 +48,20 @@ const menuItems = [
 // Produção fica separado como item especial
 const producaoItem = { id: 'producao', label: 'Produção', icon: Factory };
 
-export function Sidebar({ activeModule, setActiveModule, collapsed, setCollapsed, darkMode, companyName = 'Ohana Clean', companyLogo, onLogout }: SidebarProps) {
+export function Sidebar({ 
+  activeModule, 
+  setActiveModule, 
+  collapsed, 
+  setCollapsed, 
+  darkMode, 
+  companyName = 'Ohana Clean', 
+  companyLogo, 
+  onLogout,
+  currentUser,
+  groups
+}: SidebarProps) {
+  const visibleModules = getVisibleModules(currentUser, groups);
+
   return (
     <aside
       className={`liquid-glass fixed left-0 top-0 h-screen bg-gradient-to-b ${
@@ -84,7 +102,7 @@ export function Sidebar({ activeModule, setActiveModule, collapsed, setCollapsed
 
       {/* Menu */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {menuItems.map((item) => {
+        {menuItems.filter(item => visibleModules.includes(item.id)).map((item) => {
           const Icon = item.icon;
           const isActive = activeModule === item.id;
           
@@ -131,45 +149,49 @@ export function Sidebar({ activeModule, setActiveModule, collapsed, setCollapsed
         })}
 
         {/* Separador */}
-        <div className="my-4 border-t border-white/10" />
+        {visibleModules.includes(producaoItem.id) && (
+          <>
+            <div className="my-4 border-t border-white/10" />
 
-        {/* Produção - Item Especial com Destaque */}
-        <button
-          onClick={() => {
-            setActiveModule(producaoItem.id);
-            if (window.innerWidth < 768) {
-              setCollapsed(true);
-            }
-          }}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-            activeModule === producaoItem.id
-              ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30'
-              : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/40 hover:to-orange-500/40 border border-amber-400/30'
-          }`}
-        >
-          <div className={`p-1.5 rounded-lg ${activeModule === producaoItem.id ? 'bg-white/20' : 'bg-amber-400/20'}`}>
-            <producaoItem.icon className={`w-5 h-5 flex-shrink-0 ${activeModule === producaoItem.id ? 'text-white' : 'text-amber-400'}`} />
-          </div>
-          {!collapsed && (
-            <div className="flex-1 text-left">
-              <span className={`font-semibold block ${activeModule === producaoItem.id ? 'text-white' : 'text-amber-300'}`}>
-                {producaoItem.label}
-              </span>
-              <span className={`text-xs ${activeModule === producaoItem.id ? 'text-white/70' : 'text-amber-400/70'}`}>
-                Iniciar produção
-              </span>
-            </div>
-          )}
-          {!collapsed && (
-            <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${
-              activeModule === producaoItem.id 
-                ? 'bg-white/20 text-white' 
-                : 'bg-amber-400/20 text-amber-300'
-            }`}>
-              🔥
-            </span>
-          )}
-        </button>
+            {/* Produção - Item Especial com Destaque */}
+            <button
+              onClick={() => {
+                setActiveModule(producaoItem.id);
+                if (window.innerWidth < 768) {
+                  setCollapsed(true);
+                }
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                activeModule === producaoItem.id
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30'
+                  : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/40 hover:to-orange-500/40 border border-amber-400/30'
+              }`}
+            >
+              <div className={`p-1.5 rounded-lg ${activeModule === producaoItem.id ? 'bg-white/20' : 'bg-amber-400/20'}`}>
+                <producaoItem.icon className={`w-5 h-5 flex-shrink-0 ${activeModule === producaoItem.id ? 'text-white' : 'text-amber-400'}`} />
+              </div>
+              {!collapsed && (
+                <div className="flex-1 text-left">
+                  <span className={`font-semibold block ${activeModule === producaoItem.id ? 'text-white' : 'text-amber-300'}`}>
+                    {producaoItem.label}
+                  </span>
+                  <span className={`text-xs ${activeModule === producaoItem.id ? 'text-white/70' : 'text-amber-400/70'}`}>
+                    Iniciar produção
+                  </span>
+                </div>
+              )}
+              {!collapsed && (
+                <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${
+                  activeModule === producaoItem.id 
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-amber-400/20 text-amber-300'
+                }`}>
+                  🔥
+                </span>
+              )}
+            </button>
+          </>
+        )}
       </nav>
 
       {/* Footer */}
@@ -201,25 +223,51 @@ export function Sidebar({ activeModule, setActiveModule, collapsed, setCollapsed
           )}
         </button>
 
-        {/* Configurações */}
-        <button
-          onClick={() => setActiveModule('config')}
-          className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-            activeModule === 'config'
-              ? 'active'
-              : ''
-          }`}
-        >
-          <motion.div
-            animate={activeModule === 'config' ? { rotate: 90 } : { rotate: 0 }}
-            transition={{ duration: 0.5 }}
+        {/* Usuários e Acessos */}
+        {visibleModules.includes('usuarios') && (
+          <button
+            onClick={() => setActiveModule('usuarios')}
+            className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+              activeModule === 'usuarios'
+                ? 'active'
+                : ''
+            }`}
           >
-            <Settings className="w-5 h-5 text-white/70" />
-          </motion.div>
-          {!collapsed && (
-            <span className="font-medium text-white/70">Configurações</span>
-          )}
-        </button>
+            <motion.div
+              animate={activeModule === 'usuarios' ? { scale: 1.2, rotate: [0, -10, 10, 0] } : { scale: 1, rotate: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <ShieldCheck className={`w-5 h-5 flex-shrink-0 ${activeModule === 'usuarios' ? 'text-white' : 'text-white/70'}`} />
+            </motion.div>
+            {!collapsed && (
+              <span className={`font-medium ${activeModule === 'usuarios' ? 'text-white' : 'text-white/70'}`}>
+                Usuários e Acessos
+              </span>
+            )}
+          </button>
+        )}
+
+        {/* Configurações */}
+        {visibleModules.includes('config') && (
+          <button
+            onClick={() => setActiveModule('config')}
+            className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+              activeModule === 'config'
+                ? 'active'
+                : ''
+            }`}
+          >
+            <motion.div
+              animate={activeModule === 'config' ? { rotate: 90 } : { rotate: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Settings className="w-5 h-5 text-white/70" />
+            </motion.div>
+            {!collapsed && (
+              <span className="font-medium text-white/70">Configurações</span>
+            )}
+          </button>
+        )}
 
         {/* Sair */}
         <button
