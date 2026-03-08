@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Database, Cloud, CloudOff, CheckCircle, XCircle, RefreshCw, Key, Link, Package, FlaskConical, Users } from 'lucide-react';
+import { Database, Cloud, CloudOff, CheckCircle, XCircle, RefreshCw, Key, Link, Package, FlaskConical, Users, DollarSign } from 'lucide-react';
 import { getSupabaseConfig, setSupabaseConfig, testSupabaseConnection, isSupabaseConfigured } from '../lib/supabase';
 import { dataService } from '../lib/dataService';
 
@@ -13,13 +13,13 @@ export default function SupabaseConfig({ onSync }: SupabaseConfigProps) {
   const [status, setStatus] = useState<'disconnected' | 'connected' | 'testing' | 'error'>('disconnected');
   const [message, setMessage] = useState('');
   const [syncing, setSyncing] = useState(false);
-  const [stats, setStats] = useState<{ insumos: number; formulas: number; clientes: number } | null>(null);
+  const [stats, setStats] = useState<{ insumos: number; formulas: number; clientes: number; precificacoes: number } | null>(null);
 
   useEffect(() => {
     const config = getSupabaseConfig();
     setUrl(config.url);
     setAnonKey(config.key);
-    
+
     if (config.url && config.key) {
       checkConnection();
     }
@@ -28,13 +28,12 @@ export default function SupabaseConfig({ onSync }: SupabaseConfigProps) {
   const checkConnection = async () => {
     setStatus('testing');
     setMessage('Testando conexão...');
-    
+
     const result = await testSupabaseConnection();
-    
+
     if (result.success) {
       setStatus('connected');
       setMessage('Conectado ao Supabase com sucesso!');
-      // Buscar estatísticas
       loadStats();
     } else {
       setStatus('error');
@@ -63,13 +62,13 @@ export default function SupabaseConfig({ onSync }: SupabaseConfigProps) {
       setMessage('Configure o Supabase primeiro');
       return;
     }
-    
+
     setSyncing(true);
     setMessage('Sincronizando dados...');
-    
+
     try {
       const result = await dataService.syncToCloud();
-      
+
       if (result.success) {
         setMessage(`Sincronizado: ${result.details?.insumos || 0} insumos, ${result.details?.formulas || 0} fórmulas, ${result.details?.clientes || 0} clientes`);
         loadStats();
@@ -101,27 +100,19 @@ export default function SupabaseConfig({ onSync }: SupabaseConfigProps) {
 
   const getStatusText = () => {
     switch (status) {
-      case 'connected':
-        return 'Conectado';
-      case 'testing':
-        return 'Testando...';
-      case 'error':
-        return 'Erro';
-      default:
-        return 'Desconectado';
+      case 'connected': return 'Conectado';
+      case 'testing': return 'Testando...';
+      case 'error': return 'Erro';
+      default: return 'Desconectado';
     }
   };
 
   const getStatusColor = () => {
     switch (status) {
-      case 'connected':
-        return 'bg-green-500/20 border-green-500/50 text-green-400';
-      case 'testing':
-        return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400';
-      case 'error':
-        return 'bg-red-500/20 border-red-500/50 text-red-400';
-      default:
-        return 'bg-gray-500/20 border-gray-500/50 text-gray-400';
+      case 'connected': return 'bg-green-500/20 border-green-500/50 text-green-400';
+      case 'testing': return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400';
+      case 'error': return 'bg-red-500/20 border-red-500/50 text-red-400';
+      default: return 'bg-gray-500/20 border-gray-500/50 text-gray-400';
     }
   };
 
@@ -147,7 +138,7 @@ export default function SupabaseConfig({ onSync }: SupabaseConfigProps) {
 
       {/* Statistics - Only show when connected */}
       {status === 'connected' && stats && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
             <div className="flex items-center gap-2 mb-2">
               <Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -155,7 +146,7 @@ export default function SupabaseConfig({ onSync }: SupabaseConfigProps) {
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.insumos}</p>
           </div>
-          
+
           <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30">
             <div className="flex items-center gap-2 mb-2">
               <FlaskConical className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -163,13 +154,21 @@ export default function SupabaseConfig({ onSync }: SupabaseConfigProps) {
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.formulas}</p>
           </div>
-          
+
           <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               <span className="text-sm text-gray-500 dark:text-gray-400">Clientes</span>
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.clientes}</p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              <span className="text-sm text-gray-500 dark:text-gray-400">Precificações</span>
+            </div>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.precificacoes}</p>
           </div>
         </div>
       )}
@@ -256,7 +255,7 @@ export default function SupabaseConfig({ onSync }: SupabaseConfigProps) {
         <ol className="text-sm text-gray-600 dark:text-gray-300 space-y-1 list-decimal list-inside">
           <li>Acesse seu projeto no Supabase</li>
           <li>Clique em <strong>"Table Editor"</strong> no menu lateral</li>
-          <li>Selecione a tabela desejada (ex: <code className="px-1 py-0.5 bg-gray-200 dark:bg-white/10 rounded">insumos</code>, <code className="px-1 py-0.5 bg-white/10 rounded">formulas</code>, <code className="px-1 py-0.5 bg-white/10 rounded">clientes</code>)</li>
+          <li>Selecione a tabela desejada (ex: <code className="px-1 py-0.5 bg-gray-200 dark:bg-white/10 rounded">insumos</code>, <code className="px-1 py-0.5 bg-white/10 rounded">formulas</code>, <code className="px-1 py-0.5 bg-white/10 rounded">clientes</code>, <code className="px-1 py-0.5 bg-white/10 rounded">precificacao</code>)</li>
           <li>Veja todos os registros sincronizados!</li>
         </ol>
       </div>

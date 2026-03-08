@@ -1183,20 +1183,22 @@ class DataServiceImpl {
     }
   }
 
-  async getStats(): Promise<{ insumos: number; formulas: number; clientes: number }> {
+  async getStats(): Promise<{ insumos: number; formulas: number; clientes: number; precificacoes: number }> {
     const supabase = getSupabase();
     if (supabase && await this.isConnected()) {
       try {
-        const [insumosResult, formulasResult, clientesResult] = await Promise.all([
+        const [insumosResult, formulasResult, clientesResult, precificacaoResult] = await Promise.all([
           supabase.from('insumos').select('id', { count: 'exact', head: true }),
           supabase.from('formulas').select('id', { count: 'exact', head: true }),
           supabase.from('clientes').select('id', { count: 'exact', head: true }),
+          supabase.from('precificacao').select('id', { count: 'exact', head: true }),
         ]);
 
         return {
           insumos: insumosResult.count || 0,
           formulas: formulasResult.count || 0,
           clientes: clientesResult.count || 0,
+          precificacoes: precificacaoResult.count || 0,
         };
       } catch (error) {
         console.error('Erro estatísticas:', error);
@@ -1206,11 +1208,13 @@ class DataServiceImpl {
     const insumos = localStorage.getItem('ohana_insumos');
     const formulas = localStorage.getItem('ohana_formulas');
     const clientes = localStorage.getItem('ohana_clientes');
+    const precificacoes = localStorage.getItem('precificacoes');
 
     return {
       insumos: insumos ? JSON.parse(insumos).length : 0,
       formulas: formulas ? JSON.parse(formulas).length : 0,
       clientes: clientes ? JSON.parse(clientes).length : 0,
+      precificacoes: precificacoes ? Object.keys(JSON.parse(precificacoes)).length : 0,
     };
   }
 

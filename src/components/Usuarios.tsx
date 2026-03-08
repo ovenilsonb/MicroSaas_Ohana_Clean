@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit2, Trash2, Shield, Users, Check } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Shield, Users, Check, LayoutGrid, List, ArrowUpAZ, ArrowDownAZ } from 'lucide-react';
 import { User, AccessGroup, ActionType, RolePermissions } from '../types';
 import { Modal } from './Modal';
 import { getSupabase, getSupabaseConfig } from '../lib/supabase';
@@ -14,6 +14,8 @@ interface UsuariosProps {
 }
 
 type TabType = 'usuarios' | 'grupos';
+type ViewMode = 'grid' | 'list';
+type SortMode = 'az' | 'za';
 
 const defaultPermissions: RolePermissions = {
   insumos: [],
@@ -51,6 +53,8 @@ const actions: { id: ActionType; label: string }[] = [
 
 export function Usuarios({ users, setUsers, groups, setGroups }: UsuariosProps) {
   const [activeTab, setActiveTab] = useState<TabType>('usuarios');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [sortMode, setSortMode] = useState<SortMode>('az');
   const [searchTerm, setSearchTerm] = useState('');
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -244,7 +248,7 @@ export function Usuarios({ users, setUsers, groups, setGroups }: UsuariosProps) 
       const newPerms = currentPerms.includes(action)
         ? currentPerms.filter(a => a !== action)
         : [...currentPerms, action];
-      
+
       return {
         ...prev,
         permissions: {
@@ -255,12 +259,17 @@ export function Usuarios({ users, setUsers, groups, setGroups }: UsuariosProps) 
     });
   };
 
-  const filteredUsers = users.filter(u => 
-    u.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users
+    .filter(u =>
+      u.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => sortMode === 'az'
+      ? a.nome.localeCompare(b.nome, 'pt-BR')
+      : b.nome.localeCompare(a.nome, 'pt-BR')
+    );
 
-  const filteredGroups = groups.filter(g => 
+  const filteredGroups = groups.filter(g =>
     g.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -271,7 +280,7 @@ export function Usuarios({ users, setUsers, groups, setGroups }: UsuariosProps) 
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Controle de Acesso</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Gerencie usuários e permissões do sistema</p>
         </div>
-        
+
         <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={() => {
@@ -319,76 +328,194 @@ export function Usuarios({ users, setUsers, groups, setGroups }: UsuariosProps) 
           </button>
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-          />
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {/* Search */}
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+            />
+          </div>
+
+          {/* View controls — only for users tab */}
+          {activeTab === 'usuarios' && (
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 p-1 rounded-xl">
+              {/* Sort */}
+              <button
+                onClick={() => setSortMode(s => s === 'az' ? 'za' : 'az')}
+                title={sortMode === 'az' ? 'Ordem A → Z' : 'Ordem Z → A'}
+                className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400"
+              >
+                {sortMode === 'az' ? <ArrowUpAZ className="w-4 h-4" /> : <ArrowDownAZ className="w-4 h-4" />}
+              </button>
+
+              {/* Grid view */}
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  viewMode === 'grid'
+                    ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700'
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+
+              {/* List view */}
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-700'
+                }`}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {activeTab === 'usuarios' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredUsers.map(user => {
-            const group = groups.find(g => g.id === user.roleId);
-            const isAdmin = user.role === 'admin';
-            
-            return (
-              <div key={user.id} className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 flex flex-col">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">
-                      {user.nome.charAt(0).toUpperCase()}
+        viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredUsers.map(user => {
+              const group = groups.find(g => g.id === user.roleId);
+              const isAdmin = user.role === 'admin';
+
+              return (
+                <div key={user.id} className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 flex flex-col">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg">
+                        {user.nome.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">{user.nome}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">{user.nome}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => {
-                        setEditingUser(user);
-                        setUserForm(user);
-                        setShowUserModal(true);
-                      }}
-                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    {!isAdmin && (
+                    <div className="flex gap-1">
                       <button
                         onClick={() => {
-                          if (confirm('Tem certeza que deseja excluir este usuário?')) {
-                            setUsers(prev => prev.filter(u => u.id !== user.id));
-                          }
+                          setEditingUser(user);
+                          setUserForm(user);
+                          setShowUserModal(true);
                         }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Edit2 className="w-4 h-4" />
                       </button>
-                    )}
+                      {!isAdmin && (
+                        <button
+                          onClick={() => {
+                            if (confirm('Tem certeza que deseja excluir este usuário?')) {
+                              setUsers(prev => prev.filter(u => u.id !== user.id));
+                            }
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{user.funcao || 'Sem função'}</span>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                      isAdmin
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                    }`}>
+                      {isAdmin ? 'Administrador' : (group?.name || 'Sem Grupo')}
+                    </span>
                   </div>
                 </div>
-                
-                <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{user.funcao || 'Sem função'}</span>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                    isAdmin 
-                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                      : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                  }`}>
-                    {isAdmin ? 'Administrador' : (group?.name || 'Sem Grupo')}
-                  </span>
-                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-800/80 text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
+                <tr>
+                  <th className="px-5 py-3 text-left font-medium">Usuário</th>
+                  <th className="px-5 py-3 text-left font-medium hidden sm:table-cell">E-mail</th>
+                  <th className="px-5 py-3 text-left font-medium hidden md:table-cell">Função</th>
+                  <th className="px-5 py-3 text-left font-medium">Acesso</th>
+                  <th className="px-5 py-3 text-right font-medium">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {filteredUsers.map(user => {
+                  const group = groups.find(g => g.id === user.roleId);
+                  const isAdmin = user.role === 'admin';
+
+                  return (
+                    <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm flex-shrink-0">
+                            {user.nome.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-medium text-gray-900 dark:text-white">{user.nome}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">{user.email}</td>
+                      <td className="px-5 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">{user.funcao || '—'}</td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                          isAdmin
+                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        }`}>
+                          {isAdmin ? 'Administrador' : (group?.name || 'Sem Grupo')}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            onClick={() => {
+                              setEditingUser(user);
+                              setUserForm(user);
+                              setShowUserModal(true);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          {!isAdmin && (
+                            <button
+                              onClick={() => {
+                                if (confirm('Tem certeza que deseja excluir este usuário?')) {
+                                  setUsers(prev => prev.filter(u => u.id !== user.id));
+                                }
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {filteredUsers.length === 0 && (
+              <div className="py-12 text-center text-gray-400 dark:text-gray-500">
+                Nenhum usuário encontrado.
               </div>
-            );
-          })}
-        </div>
+            )}
+          </div>
+        )
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredGroups.map(group => (
@@ -424,7 +551,7 @@ export function Usuarios({ users, setUsers, groups, setGroups }: UsuariosProps) 
                   </button>
                 </div>
               </div>
-              
+
               <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Módulos com acesso:</p>
                 <div className="flex flex-wrap gap-1">
@@ -498,8 +625,8 @@ export function Usuarios({ users, setUsers, groups, setGroups }: UsuariosProps) 
                               type="button"
                               onClick={() => togglePermission(module.id, action.id)}
                               className={`w-5 h-5 rounded flex items-center justify-center mx-auto transition-colors ${
-                                hasPerm 
-                                  ? 'bg-blue-600 text-white' 
+                                hasPerm
+                                  ? 'bg-blue-600 text-white'
                                   : 'bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600'
                               }`}
                             >

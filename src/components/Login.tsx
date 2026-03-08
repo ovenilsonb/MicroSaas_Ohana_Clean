@@ -10,7 +10,7 @@ interface LoginProps {
 }
 
 export function Login({ onLogin }: LoginProps) {
-  const [mode, setMode] = useState<'login' | 'signup' | 'recovery'>('login');
+  const [mode, setMode] = useState<'login' | 'recovery'>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +42,6 @@ export function Login({ onLogin }: LoginProps) {
         }
 
         if (authData.user) {
-          // Fetch user profile
           const { data: profileData, error: profileError } = await supabase
             .from('user_profiles')
             .select('*')
@@ -51,7 +50,6 @@ export function Login({ onLogin }: LoginProps) {
 
           if (profileError) {
             console.error('Erro ao buscar perfil:', profileError);
-            // Fallback if profile doesn't exist yet
             const fallbackUser: UserType = {
               id: authData.user.id,
               email: authData.user.email || email,
@@ -85,30 +83,15 @@ export function Login({ onLogin }: LoginProps) {
             onLogin(user);
           }
         }
-      } else if (mode === 'signup') {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email,
-          password
-        });
-
-        if (authError) {
-          throw authError;
-        }
-
-        if (authData.user) {
-          alert('Conta criada com sucesso! Verifique seu e-mail para confirmar a conta (se necessário) ou faça login.');
-          setMode('login');
-        }
       } else if (mode === 'recovery') {
-        // Password recovery
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: window.location.origin,
         });
-        
+
         if (resetError) {
           throw resetError;
         }
-        
+
         alert('E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.');
         setMode('login');
       }
@@ -129,9 +112,9 @@ export function Login({ onLogin }: LoginProps) {
       {/* Left Column - Image */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-blue-900 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 to-[#030712]/90 z-10" />
-        <img 
-          src="https://images.unsplash.com/photo-1584820927498-cafe2c1c9695?q=80&w=1974&auto=format&fit=crop" 
-          alt="Produção de Lava Roupas" 
+        <img
+          src="https://images.unsplash.com/photo-1584820927498-cafe2c1c9695?q=80&w=1974&auto=format&fit=crop"
+          alt="Produção de Lava Roupas"
           className="absolute inset-0 w-full h-full object-cover mix-blend-overlay"
           referrerPolicy="no-referrer"
         />
@@ -152,7 +135,7 @@ export function Login({ onLogin }: LoginProps) {
       {/* Right Column - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 lg:p-16">
         <div className="w-full max-w-md animate-fadeIn">
-          {/* Mobile Header (only visible on small screens) */}
+          {/* Mobile Header */}
           <div className="text-center mb-8 lg:hidden">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-blue-600/20 mb-4 border border-blue-500/30">
               <Building2 className="w-8 h-8 text-blue-500" />
@@ -165,7 +148,7 @@ export function Login({ onLogin }: LoginProps) {
           <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 shadow-2xl">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-xl font-semibold text-white">
-                {mode === 'login' ? 'Acessar Conta' : mode === 'signup' ? 'Criar Conta' : 'Recuperar Senha'}
+                {mode === 'login' ? 'Acessar Conta' : 'Recuperar Senha'}
               </h2>
               <Shield className="w-5 h-5 text-blue-500" />
             </div>
@@ -201,15 +184,13 @@ export function Login({ onLogin }: LoginProps) {
                     <label className="block text-sm font-medium text-gray-400">
                       Senha de Acesso
                     </label>
-                    {mode === 'login' && (
-                      <button 
-                        type="button"
-                        onClick={() => setMode('recovery')}
-                        className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
-                      >
-                        Esqueceu a senha?
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setMode('recovery')}
+                      className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
+                    >
+                      Esqueceu a senha?
+                    </button>
                   </div>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -241,27 +222,18 @@ export function Login({ onLogin }: LoginProps) {
                 disabled={loading}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar no Sistema' : mode === 'signup' ? 'Criar Conta' : 'Enviar Link de Recuperação')}
+                {loading ? 'Aguarde...' : (mode === 'login' ? 'Entrar no Sistema' : 'Enviar Link de Recuperação')}
               </button>
 
               {mode === 'login' && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setMode('signup')}
-                    className="w-full py-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-2xl shadow-lg transition-all active:scale-[0.98] mt-4 flex items-center justify-center gap-2 border border-gray-700"
-                  >
-                    Criar Nova Conta
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowDbConfig(true)}
-                    className="w-full py-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-2xl shadow-lg transition-all active:scale-[0.98] mt-4 flex items-center justify-center gap-2 border border-gray-700"
-                  >
-                    <Database className="w-5 h-5" />
-                    Configurar Banco de Dados
-                  </button>
-                </>
+                <button
+                  type="button"
+                  onClick={() => setShowDbConfig(true)}
+                  className="w-full py-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-2xl shadow-lg transition-all active:scale-[0.98] mt-4 flex items-center justify-center gap-2 border border-gray-700"
+                >
+                  <Database className="w-5 h-5" />
+                  Configurar Banco de Dados
+                </button>
               )}
 
               {mode !== 'login' && (
@@ -302,4 +274,3 @@ export function Login({ onLogin }: LoginProps) {
     </div>
   );
 }
-
