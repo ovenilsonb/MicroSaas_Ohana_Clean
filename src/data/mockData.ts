@@ -203,6 +203,16 @@ export const formulasData: Formula[] = [
 
 export const versionHistory: VersionEntry[] = [
   {
+    version: '1.42.0',
+    date: '2026-03-09',
+    changes: [
+      'Correção de bug: Login agora é sempre exigido ao inicializar, evitando entrada com módulos bloqueados.',
+      'Aprimoramento do Backup: Nome do arquivo exportado agora inclui a versão atual do sistema.',
+      'Aprimoramento da Restauração: Implementada mesclagem inteligente de dados para garantir compatibilidade estrutural com possíveis mudanças nas tabelas.',
+      'Atualização do histórico para refletir as melhorias e correções no sistema.',
+    ],
+  },
+  {
     version: '1.41.0',
     date: '2026-03-04',
     changes: [
@@ -287,4 +297,4 @@ export const versionHistory: VersionEntry[] = [
   },
 ];
 
-export const currentVersion = '1.41.0';
+export const currentVersion = '1.42.0';

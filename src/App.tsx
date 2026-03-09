@@ -137,7 +137,7 @@ export function App() {
   }, [reportAssignments]);
   
   // Auth
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Profile form state
@@ -571,16 +571,16 @@ export function App() {
     
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
     const now = new Date();
-    const filename = `ohana-clean-backup_${now.toISOString().slice(0, 10)}_${now.toTimeString().slice(0, 8).replace(/:/g, '-')}.json`;
+    const filename = `ohana-clean-backup_v${currentVersion}_${now.toISOString().slice(0, 10)}_${now.toTimeString().slice(0, 8).replace(/:/g, '-')}.json`;
+    const a = document.createElement('a');
     a.href = url;
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  // RESTORE - Restaura INSUMOS e FÓRMULAS
+  // RESTORE - Restaura e mescla os dados para manter integridade estrutural
   const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -589,39 +589,49 @@ export function App() {
         try {
           const data = JSON.parse(reader.result as string);
           
-          // Restaurar INSUMOS
-          if (data.insumos) {
-            setInsumos(data.insumos);
-          }
+          const mergeItems = (prev: any[], newItems: any[] = []) => {
+            const map = new Map(prev.map(item => [item.id, item]));
+            newItems.forEach(item => {
+              const existing = map.get(item.id);
+              map.set(item.id, { ...existing, ...item });
+            });
+            return Array.from(map.values());
+          };
           
-          // Restaurar FÓRMULAS
-          if (data.formulas) {
-            setFormulas(data.formulas);
-          }
+          if (data.insumos) setInsumos(prev => mergeItems(prev, data.insumos));
+          if (data.formulas) setFormulas(prev => mergeItems(prev, data.formulas));
+          if (data.pedidos) setPedidos(prev => mergeItems(prev, data.pedidos));
+          if (data.ordensProducao) setOrdensProducao(prev => mergeItems(prev, data.ordensProducao));
+          if (data.produtosEstoque) setProdutosEstoque(prev => mergeItems(prev, data.produtosEstoque));
+          if (data.movimentosEstoque) setMovimentosEstoque(prev => mergeItems(prev, data.movimentosEstoque));
+          if (data.clientes) setClientes(prev => mergeItems(prev, data.clientes));
+          if (data.listasPreco) setListasPreco(prev => mergeItems(prev, data.listasPreco));
           
-          // Restaurar outros dados
-          if (data.pedidos) setPedidos(data.pedidos);
-          if (data.ordensProducao) setOrdensProducao(data.ordensProducao);
-          if (data.produtosEstoque) setProdutosEstoque(data.produtosEstoque);
-          if (data.movimentosEstoque) setMovimentosEstoque(data.movimentosEstoque);
-          if (data.clientes) setClientes(data.clientes);
-          if (data.listasPreco) setListasPreco(data.listasPreco);
-          if (data.precificacoes) setPrecificacoes(data.precificacoes);
+          if (data.precificacoes) {
+            setPrecificacoes(prev => {
+              const merged = { ...prev };
+              Object.keys(data.precificacoes).forEach(key => {
+                merged[key] = { ...merged[key], ...data.precificacoes[key] };
+              });
+              return merged;
+            });
+          }
           
           // Restaurar perfil
           if (data.userProfile) {
-            setUserName(data.userProfile.nome);
-            setUserPhoto(data.userProfile.foto);
+            setUserName(data.userProfile.nome || userName);
+            setUserPhoto(data.userProfile.foto || userPhoto);
             setProfileForm(prev => ({ 
               ...prev, 
-              nome: data.userProfile.nome,
-              email: data.userProfile.email,
-              funcao: data.userProfile.funcao || data.userProfile.cargo || ''
+              ...data.userProfile,
+              nome: data.userProfile.nome || prev.nome,
+              email: data.userProfile.email || prev.email,
+              funcao: data.userProfile.funcao || data.userProfile.cargo || prev.funcao || ''
             }));
             localStorage.setItem('userProfile', JSON.stringify(data.userProfile));
           }
           
-          alert('Backup restaurado com sucesso!');
+          alert('Backup restaurado e os dados foram atualizados com sucesso!');
         } catch {
           alert('Erro ao restaurar backup. Arquivo inválido.');
         }
@@ -806,7 +816,7 @@ export function App() {
     );
   }
 
-  if (!currentUser && !isAuthenticated) {
+  if (!currentUser) {
     return <Login onLogin={(user) => {
       setCurrentUser(user);
       setIsAuthenticated(true);
