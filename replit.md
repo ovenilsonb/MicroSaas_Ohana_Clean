@@ -46,3 +46,12 @@ src/
 - **Admin user**: contato@ohanaclean.com.br / admin123
 - **RLS**: Policies allow both `anon` and `authenticated` roles for all tables
 - **localStorage**: Used as cache/fallback when Supabase is unreachable
+
+## Report Header/Footer Editor
+
+- **Component**: `src/components/HeaderFooterEditor.tsx` — full-screen visual editor for designing custom report headers and footers
+- **Features**: Drag/resize text boxes and images, font/size/color/alignment controls, bold/italic/underline, image upload (PNG/JPEG/SVG), company logo insertion, adjustable header/footer heights, live preview
+- **Types**: `ReportElement`, `ReportElementStyle` in `src/types/index.ts`; `ReportTemplateConfig` extended with `headerHeight`, `footerHeight`, `headerElements`, `footerElements`
+- **Integration**: Accessed from `ReportConfig.tsx` via "Editar Cabeçalho / Rodapé" button per template
+- **Rendering**: `ReportTemplate.tsx` renders custom elements using percentage-based positioning (normalized from 794px editor canvas) for responsive scaling across screen and print
+- **Templates**: Saved to localStorage, assignable to specific report types (Fórmula, Proporção, Precificação, Vendas)

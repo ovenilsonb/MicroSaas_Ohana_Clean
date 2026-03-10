@@ -1069,6 +1069,7 @@ export function App() {
               setTemplates={setReportTemplates}
               assignments={reportAssignments}
               setAssignments={setReportAssignments}
+              companyLogo={companyLogo}
             />
           )}
 

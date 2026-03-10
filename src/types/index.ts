@@ -257,6 +257,27 @@ export interface User {
   limits: UserLimits;
 }
 
+export interface ReportElementStyle {
+  fontFamily: string;
+  fontSize: number;
+  color: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  align: 'left' | 'center' | 'right';
+}
+
+export interface ReportElement {
+  id: string;
+  type: 'text' | 'image';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  content: string;
+  style: ReportElementStyle;
+}
+
 export interface ReportTemplateConfig {
   id: string;
   name: string;
@@ -264,6 +285,10 @@ export interface ReportTemplateConfig {
   headerText: string;
   footerText: string;
   showSeparator: boolean;
+  headerHeight?: number;
+  footerHeight?: number;
+  headerElements?: ReportElement[];
+  footerElements?: ReportElement[];
 }
 
 export interface ReportAssignments {
