@@ -336,7 +336,7 @@ export function Insumos({ insumos, setInsumos, canAdd = true, canEdit = true, ca
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Unidade</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Valor</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Fornecedor</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Estoque</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Estoque</th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Tipo</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Ações</th>
               </tr>
@@ -385,7 +385,24 @@ export function Insumos({ insumos, setInsumos, canAdd = true, canEdit = true, ca
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{insumo.fornecedor}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{insumo.estoque}</td>
+                    <td className="px-4 py-3">
+                      {(() => {
+                        const min = insumo.estoqueMinimo || 1;
+                        const max = Math.max(min * 3, insumo.estoque, 1);
+                        const pct = Math.min(100, Math.max(0, (insumo.estoque / max) * 100));
+                        const isLow = insumo.estoque <= min;
+                        return (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={`text-sm font-medium ${isLow ? 'text-red-500 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                              {insumo.estoque}
+                            </span>
+                            <div style={{ position: 'relative', width: 72, height: 8, borderRadius: 999, overflow: 'hidden', background: 'linear-gradient(to right, #ef4444 0%, #f97316 25%, #eab308 50%, #84cc16 75%, #22c55e 100%)', flexShrink: 0 }}>
+                              <div style={{ position: 'absolute', top: 0, left: `calc(${pct}% - 1.5px)`, width: 3, height: '100%', background: '#000', borderRadius: 2, zIndex: 2, boxShadow: '0 0 2px rgba(255,255,255,0.7)' }} />
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className="px-4 py-3 text-center">
                       {insumo.quimico ? (
                         <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30" title="Químico">
