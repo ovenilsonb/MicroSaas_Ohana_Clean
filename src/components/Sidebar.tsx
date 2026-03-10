@@ -87,16 +87,21 @@ export function Sidebar({
       }`}
     >
       {/* Logo */}
-      <div className="p-6 flex items-center gap-3">
+      <div className={`flex items-center gap-3 ${collapsed ? 'px-3 py-4 justify-center' : 'px-4 py-4'}`}>
         {companyLogo ? (
-          <img src={companyLogo} alt={companyName} className="w-10 h-10 rounded-xl object-cover flex-shrink-0 bg-white/20 backdrop-blur-sm" />
+          <img
+            src={companyLogo}
+            alt={companyName}
+            className={`rounded-xl object-contain flex-shrink-0 transition-all duration-300 ${collapsed ? 'w-12 h-12' : 'w-14 h-14'}`}
+            style={{ background: 'transparent' }}
+          />
         ) : (
-          <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
-            <span className="text-xl">💧</span>
+          <div className={`bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${collapsed ? 'w-12 h-12' : 'w-14 h-14'}`}>
+            <span className={`${collapsed ? 'text-2xl' : 'text-3xl'}`}>💧</span>
           </div>
         )}
         {!collapsed && (
-          <div className="animate-fadeIn truncate flex-1">
+          <div className="animate-fadeIn truncate flex-1 min-w-0">
             <h1 className="font-bold text-lg leading-tight truncate" title={companyName}>{companyName}</h1>
             <p className="text-xs text-white/70">Sistema de Gestão</p>
             <p className="text-[10px] text-white/40 mt-1">v{currentVersion}</p>
@@ -107,7 +112,7 @@ export function Sidebar({
         {!collapsed && (
           <button
             onClick={() => setCollapsed(true)}
-            className="md:hidden p-2 hover:bg-white/10 rounded-xl transition-colors ml-auto"
+            className="md:hidden p-2 hover:bg-white/10 rounded-xl transition-colors ml-auto flex-shrink-0"
           >
             <X className="w-5 h-5" />
           </button>

@@ -309,7 +309,9 @@ export const HeaderFooterEditor: React.FC<HeaderFooterEditorProps> = ({ template
         width: A4_WIDTH_PX,
         height,
         position: 'relative',
-        background: isPreview ? '#ffffff' : '#ffffff',
+        background: isPreview
+          ? '#ffffff'
+          : 'repeating-conic-gradient(#e5e7eb 0% 25%, #f9fafb 0% 50%) 0 0 / 20px 20px',
         border: isPreview ? 'none' : '1px solid #e2e8f0',
         overflow: 'hidden',
       }}
