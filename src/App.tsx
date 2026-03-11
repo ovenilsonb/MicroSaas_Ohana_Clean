@@ -755,6 +755,7 @@ export function App() {
             companyLogo={companyLogo}
             reportTemplates={reportTemplates}
             reportAssignments={reportAssignments}
+            onNavigateTo={(module: string) => setActiveModule(module)}
           />
         );
       case 'config':

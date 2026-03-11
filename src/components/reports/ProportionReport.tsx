@@ -58,6 +58,7 @@ export const ProportionReport: React.FC<ProportionReportProps & { companyName?: 
   };
 
   const fmt2 = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt3 = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 
   const calcularCustoTotal = () => {
     let total = 0;
@@ -123,8 +124,8 @@ export const ProportionReport: React.FC<ProportionReportProps & { companyName?: 
                     <tr key={insumo.id} className="text-xs">
                       <td className="px-4 py-3 text-center"><div className="w-5 h-5 border-2 border-slate-300 rounded mx-auto"></div></td>
                       <td className="px-4 py-3"><p className="font-bold text-slate-800">{insumo.nome}</p></td>
-                      <td className="px-4 py-3 text-center text-slate-400 font-mono">{fmt2(insumo.quantidade)} {insumo.unidade}</td>
-                      <td className="px-4 py-3 text-center font-black text-amber-700 bg-amber-50/30 font-mono">{fmt2(qtdAjustada)} {insumo.unidade}</td>
+                      <td className="px-4 py-3 text-center text-slate-400 font-mono">{fmt3(insumo.quantidade)} {insumo.unidade}</td>
+                      <td className="px-4 py-3 text-center font-black text-amber-700 bg-amber-50/30 font-mono">{fmt3(qtdAjustada)} {insumo.unidade}</td>
                       <td className="px-4 py-3 text-center text-slate-500 font-mono">{percOriginal.toFixed(2)}%</td>
                       <td className="px-4 py-3 text-right font-bold text-slate-700">R$ {fmt2(qtdAjustada * insumo.valorUnitario)}</td>
                     </tr>

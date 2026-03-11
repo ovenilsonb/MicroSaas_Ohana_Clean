@@ -10,7 +10,8 @@ import {
   Users,
   ChevronRight,
   DollarSign,
-  Tag
+  Tag,
+  Plus
 } from 'lucide-react';
 import { Formula, Insumo, Precificacao, ReportTemplateConfig, ReportAssignments } from '../types';
 import { Pedido } from './Vendas';
@@ -31,9 +32,10 @@ interface RelatoriosProps {
   companyLogo: string;
   reportTemplates?: ReportTemplateConfig[];
   reportAssignments?: ReportAssignments;
+  onNavigateTo?: (module: string) => void;
 }
 
-export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes, companyName, companyLogo, reportTemplates = [], reportAssignments }: RelatoriosProps) {
+export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes, companyName, companyLogo, reportTemplates = [], reportAssignments, onNavigateTo }: RelatoriosProps) {
   const getTemplateConfig = (type: keyof ReportAssignments) => {
     if (!reportAssignments || !reportAssignments[type]) return undefined;
     return reportTemplates.find(t => t.id === reportAssignments[type]);
@@ -175,6 +177,20 @@ export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes
                       <Printer className="w-3.5 h-3.5" />
                       Proporção
                     </button>
+                    {precificacoes[formula.id] && (
+                      <button
+                        onClick={() => {
+                          setSelectedFormula(formula);
+                          const saved = precificacoes[formula.id] as any;
+                          setSelectedPricingVolume(saved?.unitVolume || (saved?.unitType === '5L' ? 5 : 2));
+                          setShowPricingReport(true);
+                        }}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors text-[10px] font-bold uppercase tracking-wider"
+                      >
+                        <DollarSign className="w-3.5 h-3.5" />
+                        Preços ({((precificacoes[formula.id] as any)?.unitVolume || ((precificacoes[formula.id] as any)?.unitType === '5L' ? 5 : 2))}L)
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -188,11 +204,20 @@ export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes
 
           {/* Dedicated Pricing Reports Section */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
               <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <DollarSign className="w-5 h-5 text-emerald-500" />
                 Relatórios de Precificação Disponíveis
               </h3>
+              {onNavigateTo && (
+                <button
+                  onClick={() => onNavigateTo('precificacao')}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-[10px] font-bold uppercase tracking-wider"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Nova Precificação
+                </button>
+              )}
             </div>
             <div className="divide-y divide-gray-50 dark:divide-gray-700 max-h-[300px] overflow-y-auto">
               {formulas.filter(f => precificacoes[f.id]).map((formula) => (
@@ -219,8 +244,17 @@ export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes
                 </div>
               ))}
               {formulas.filter(f => precificacoes[f.id]).length === 0 && (
-                <div className="p-8 text-center text-gray-500 text-sm italic">
-                  Nenhuma precificação encontrada. Vá para a aba "Precificação" para configurar os custos e margens.
+                <div className="p-8 text-center">
+                  <p className="text-gray-500 text-sm italic mb-3">Nenhuma precificação encontrada.</p>
+                  {onNavigateTo && (
+                    <button
+                      onClick={() => onNavigateTo('precificacao')}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs font-bold"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Criar Precificação
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -326,7 +360,7 @@ export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes
             </p>
             <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
               <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">Dica</p>
-              <p className="text-xs text-emerald-700 dark:text-emerald-300">Use os botões "Preços 2L" ou "5L" na lista ao lado para visualizar as margens de cada canal.</p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">Use os botões "Preços" na lista de fórmulas ou na seção de precificação para visualizar as margens de cada canal.</p>
             </div>
           </div>
 

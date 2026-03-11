@@ -333,8 +333,8 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
       if (parts.length > 2) {
         cleanValue = parts[0] + ',' + parts.slice(1).join('');
       }
-      if (parts.length === 2 && parts[1].length > 2) {
-        cleanValue = parts[0] + ',' + parts[1].substring(0, 2);
+      if (parts.length === 2 && parts[1].length > 3) {
+        cleanValue = parts[0] + ',' + parts[1].substring(0, 3);
       }
     }
     
@@ -353,7 +353,7 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
     }));
     
     // Formata o valor após blur
-    const formatted = quimico ? quantidade.toFixed(2).replace('.', ',') : Math.round(quantidade).toString();
+    const formatted = quimico ? quantidade.toFixed(3).replace('.', ',') : Math.round(quantidade).toString();
     setQuantidadeInputs(prev => ({ ...prev, [id]: formatted }));
   };
 
@@ -361,7 +361,7 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
     if (quantidadeInputs[insumo.id] !== undefined) {
       return quantidadeInputs[insumo.id];
     }
-    return insumo.quimico ? insumo.quantidade.toFixed(2).replace('.', ',') : insumo.quantidade.toString();
+    return insumo.quimico ? insumo.quantidade.toFixed(3).replace('.', ',') : insumo.quantidade.toString();
   };
 
   // Grupos handlers
@@ -1005,7 +1005,7 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
                               // Inicializa o input com o valor atual ao focar, sem zerar
                               if (quantidadeInputs[insumo.id] === undefined) {
                                 const formatted = insumo.quimico 
-                                  ? insumo.quantidade.toFixed(2).replace('.', ',') 
+                                  ? insumo.quantidade.toFixed(3).replace('.', ',') 
                                   : insumo.quantidade.toString();
                                 setQuantidadeInputs(prev => ({ ...prev, [insumo.id]: formatted }));
                               }
@@ -1169,9 +1169,9 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
                       <span className="text-gray-900 dark:text-white">{insumo.nome}</span>
                     </div>
                     <div className="flex items-center gap-4 text-sm">
-                      <span className="text-gray-500">{insumo.quantidade.toFixed(2)} {insumo.unidade}</span>
+                      <span className="text-gray-500">{insumo.quantidade.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} {insumo.unidade}</span>
                       <span className="font-medium text-gray-900 dark:text-white">
-                        R$ {(insumo.quantidade * insumo.valorUnitario).toFixed(2)}
+                        R$ {(insumo.quantidade * insumo.valorUnitario).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
@@ -1448,8 +1448,8 @@ function ProporcaoTab({
       if (parts.length > 2) {
         cleanValue = parts[0] + ',' + parts.slice(1).join('');
       }
-      if (parts.length === 2 && parts[1].length > 2) {
-        cleanValue = parts[0] + ',' + parts[1].substring(0, 2);
+      if (parts.length === 2 && parts[1].length > 3) {
+        cleanValue = parts[0] + ',' + parts[1].substring(0, 3);
       }
     }
     setPropInputs(prev => ({ ...prev, [insumoId]: cleanValue }));
@@ -1459,7 +1459,7 @@ function ProporcaoTab({
     const qtd = getQuantidadeAjustada(insumo);
     setPropOriginalValues(prev => ({ ...prev, [insumoId]: qtd }));
     if (propInputs[insumoId] === undefined) {
-      const formatted = insumo.quimico ? qtd.toFixed(2).replace('.', ',') : Math.round(qtd).toString();
+      const formatted = insumo.quimico ? qtd.toFixed(3).replace('.', ',') : Math.round(qtd).toString();
       setPropInputs(prev => ({ ...prev, [insumoId]: formatted }));
     }
   };
@@ -1475,7 +1475,7 @@ function ProporcaoTab({
         setHasChanges(true);
       }
     }
-    const formatted = quimico ? novaQuantidade.toFixed(2).replace('.', ',') : Math.round(novaQuantidade).toString();
+    const formatted = quimico ? novaQuantidade.toFixed(3).replace('.', ',') : Math.round(novaQuantidade).toString();
     setPropInputs(prev => ({ ...prev, [insumoId]: formatted }));
   };
 
@@ -1484,7 +1484,7 @@ function ProporcaoTab({
       return propInputs[insumo.id];
     }
     const qtd = getQuantidadeAjustada(insumo);
-    return insumo.quimico ? qtd.toFixed(2).replace('.', ',') : Math.round(qtd).toString();
+    return insumo.quimico ? qtd.toFixed(3).replace('.', ',') : Math.round(qtd).toString();
   };
 
   const handleSaveToOriginal = () => {
@@ -1503,7 +1503,7 @@ function ProporcaoTab({
     });
     const alteracoes = insumosAtualizados
       .filter(i => Math.abs(i._qtdAnterior - i._qtdNova) > 0.0001)
-      .map(i => `${i.nome}: ${i._qtdAnterior.toFixed(2)} → ${i._qtdNova.toFixed(2)}`);
+      .map(i => `${i.nome}: ${i._qtdAnterior.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} → ${i._qtdNova.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`);
     if (alteracoes.length === 0) { alert('Nenhuma alteração detectada.'); return; }
     const novoHistorico: FormulaHistorico = {
       id: Date.now().toString(), data: dataStr, acao: 'Ajuste de Proporção',
@@ -1755,7 +1755,7 @@ function ProporcaoTab({
                           {wasEdited && <span className="px-1.5 py-0.5 bg-amber-500 text-white text-xs rounded">editado</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{insumo.quantidade.toFixed(2)} {insumo.unidade}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{insumo.quantidade.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} {insumo.unidade}</td>
                       <td className="px-4 py-3">
                         <input type="text" value={getPropInputValue(insumo)} onFocus={() => handlePropInputFocus(insumo.id, insumo)} onChange={(e) => handlePropInputChange(insumo.id, e.target.value, true)} onBlur={() => handlePropInputBlur(insumo.id, true)} className="w-24 px-2 py-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-900 dark:text-white font-medium" />
                         <span className="ml-1 text-xs text-gray-500">{insumo.unidade}</span>

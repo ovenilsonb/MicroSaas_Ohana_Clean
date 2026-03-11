@@ -478,7 +478,7 @@ export function Producao({ ordensProducao, setOrdensProducao, pedidos: _pedidos,
                         }`}>
                           <span className="text-gray-900 dark:text-white">{insumo.nome}</span>
                           <span className="font-medium text-gray-900 dark:text-white">
-                            {insumo.quimico ? qtdTotal.toFixed(2) : Math.round(qtdTotal)} {insumo.unidade}
+                            {insumo.quimico ? qtdTotal.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : Math.round(qtdTotal)} {insumo.unidade}
                           </span>
                         </div>
                       );
