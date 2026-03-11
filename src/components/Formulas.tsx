@@ -1317,110 +1317,108 @@ function ProporcaoTab({
   const [selectedFormulaId, setSelectedFormulaId] = useState('');
   const [insumosAjustados, setInsumosAjustados] = useState<Record<string, number>>({});
   const [hasChanges, setHasChanges] = useState(false);
-  
-
-  
-
-  
+  const [selectedNonChemicals, setSelectedNonChemicals] = useState<Record<string, boolean>>({});
+  const [embalagemVolume, setEmbalagemVolume] = useState<number>(1);
+  const [embalagemVolumeInput, setEmbalagemVolumeInput] = useState('1');
 
   const selectedFormula = formulas.find(f => f.id === selectedFormulaId);
-  const fator = selectedFormula ? quantidade / selectedFormula.rendimento : 1;
+
+  const nonChemicals = useMemo(() => 
+    (selectedFormula?.insumos || []).filter(i => !i.quimico), 
+    [selectedFormula]
+  );
+  const chemicals = useMemo(() => 
+    (selectedFormula?.insumos || []).filter(i => i.quimico), 
+    [selectedFormula]
+  );
+
+  const totalVolume = quantidade * embalagemVolume;
+  const fatorQuimico = selectedFormula ? totalVolume / (selectedFormula.rendimento || 1) : 1;
 
   const getGrupo = (grupoId: string) => grupos.find(g => g.id === grupoId);
 
-  // Quando muda a fórmula selecionada, preenche a quantidade com o rendimento original
   useEffect(() => {
     if (selectedFormula) {
-      setQuantidade(selectedFormula.rendimento);
+      setQuantidade(10);
+      const newSelected: Record<string, boolean> = {};
+      (selectedFormula.insumos || []).filter(i => !i.quimico).forEach(i => {
+        newSelected[i.id] = true;
+      });
+      setSelectedNonChemicals(newSelected);
+      setEmbalagemVolume(1);
+      setEmbalagemVolumeInput('1');
     }
     setInsumosAjustados({});
     setPropInputs({});
     setHasChanges(false);
-  }, [selectedFormulaId, selectedFormula?.rendimento]);
+  }, [selectedFormulaId]);
 
-  // Calcula a quantidade ajustada considerando edições manuais
   const getQuantidadeAjustada = (insumo: FormulaInsumo) => {
     if (insumosAjustados[insumo.id] !== undefined) {
       return insumosAjustados[insumo.id];
     }
-    return insumo.quimico 
-      ? insumo.quantidade * fator 
-      : Math.round(insumo.quantidade * fator);
+    if (insumo.quimico) {
+      return insumo.quantidade * fatorQuimico;
+    }
+    return quantidade * insumo.quantidade;
   };
 
   const calcularCustoTotal = () => {
     if (!selectedFormula) return 0;
-    return (selectedFormula.insumos || []).reduce((sum, i) => {
-      const qtd = getQuantidadeAjustada(i);
-      return sum + (qtd * i.valorUnitario);
-    }, 0);
+    let total = 0;
+    chemicals.forEach(i => {
+      total += getQuantidadeAjustada(i) * i.valorUnitario;
+    });
+    nonChemicals.forEach(i => {
+      if (selectedNonChemicals[i.id]) {
+        total += getQuantidadeAjustada(i) * i.valorUnitario;
+      }
+    });
+    return total;
   };
 
-  // Estado local para inputs de proporção
   const [propInputs, setPropInputs] = useState<Record<string, string>>({});
-  // Estado para guardar valores originais ao focar (para comparação)
   const [propOriginalValues, setPropOriginalValues] = useState<Record<string, number>>({});
 
-  // Handler para edição da quantidade - permite digitação livre sem zerar o campo
   const handlePropInputChange = (insumoId: string, value: string, quimico: boolean) => {
     let cleanValue = value;
-    
     if (!quimico) {
-      // Apenas inteiros para não-químicos
       cleanValue = value.replace(/\D/g, '');
     } else {
-      // Permite números e vírgula para químicos
       cleanValue = value.replace(/[^\d,]/g, '');
-      // Apenas uma vírgula
       const parts = cleanValue.split(',');
       if (parts.length > 2) {
         cleanValue = parts[0] + ',' + parts.slice(1).join('');
       }
-      // Máximo 3 decimais
       if (parts.length === 2 && parts[1].length > 3) {
         cleanValue = parts[0] + ',' + parts[1].substring(0, 3);
       }
     }
-
     setPropInputs(prev => ({ ...prev, [insumoId]: cleanValue }));
   };
 
-  // Ao focar no campo, NÃO zerar o valor - apenas guardar o valor original para comparação
   const handlePropInputFocus = (insumoId: string, insumo: FormulaInsumo) => {
     const qtd = getQuantidadeAjustada(insumo);
-    // Guarda o valor original ao focar para comparar depois
     setPropOriginalValues(prev => ({ ...prev, [insumoId]: qtd }));
-    // Se não existe valor no propInputs, inicializa com o valor atual
     if (propInputs[insumoId] === undefined) {
       const formatted = insumo.quimico ? qtd.toFixed(3).replace('.', ',') : Math.round(qtd).toString();
       setPropInputs(prev => ({ ...prev, [insumoId]: formatted }));
     }
   };
 
-  // Ao sair do campo, aplica o valor e formata - SÓ marca como editado se o valor realmente mudou
   const handlePropInputBlur = (insumoId: string, quimico: boolean) => {
     const value = propInputs[insumoId] || '0';
     const novaQuantidade = parseFloat(value.replace(',', '.')) || 0;
     const quantidadeOriginal = propOriginalValues[insumoId];
-    
-    // Tolerância para comparação de floats
     const mudou = quantidadeOriginal !== undefined && Math.abs(novaQuantidade - quantidadeOriginal) > 0.0001;
-    
-    // Só atualiza se o valor realmente mudou
     if (mudou) {
-      setInsumosAjustados(prev => ({
-        ...prev,
-        [insumoId]: novaQuantidade,
-      }));
+      setInsumosAjustados(prev => ({ ...prev, [insumoId]: novaQuantidade }));
       setHasChanges(true);
     }
-
-    // Formata após blur
     const formatted = quimico ? novaQuantidade.toFixed(3).replace('.', ',') : Math.round(novaQuantidade).toString();
     setPropInputs(prev => ({ ...prev, [insumoId]: formatted }));
   };
 
-  // Obtém o valor para exibição no input
   const getPropInputValue = (insumo: FormulaInsumo) => {
     if (propInputs[insumo.id] !== undefined) {
       return propInputs[insumo.id];
@@ -1429,315 +1427,328 @@ function ProporcaoTab({
     return insumo.quimico ? qtd.toFixed(3).replace('.', ',') : Math.round(qtd).toString();
   };
 
-  // Salvar ajustes na fórmula original
   const handleSaveToOriginal = () => {
     if (!selectedFormula || !onUpdateFormula) return;
-
     const now = new Date();
     const dataStr = now.toLocaleString('pt-BR');
-    
-    // Calcula as novas quantidades base (dividindo pelo fator)
     const insumosAtualizados = (selectedFormula.insumos || []).map(insumo => {
       const qtdAjustada = getQuantidadeAjustada(insumo);
       const qtdOriginal = insumo.quantidade;
-      const novaQtdBase = fator > 0 ? qtdAjustada / fator : insumo.quantidade;
-      
-      return {
-        ...insumo,
-        quantidade: novaQtdBase,
-        _qtdAnterior: qtdOriginal,
-        _qtdNova: novaQtdBase,
-      };
+      const f = insumo.quimico ? fatorQuimico : quantidade;
+      const novaQtdBase = f > 0 ? qtdAjustada / f : insumo.quantidade;
+      return { ...insumo, quantidade: novaQtdBase, _qtdAnterior: qtdOriginal, _qtdNova: novaQtdBase };
     });
-
-    // Cria histórico das alterações
     const alteracoes = insumosAtualizados
       .filter(i => Math.abs(i._qtdAnterior - i._qtdNova) > 0.0001)
       .map(i => `${i.nome}: ${i._qtdAnterior.toFixed(3)} → ${i._qtdNova.toFixed(3)}`);
-
-    if (alteracoes.length === 0) {
-      alert('Nenhuma alteração detectada.');
-      return;
-    }
-
+    if (alteracoes.length === 0) { alert('Nenhuma alteração detectada.'); return; }
     const novoHistorico: FormulaHistorico = {
-      id: Date.now().toString(),
-      data: dataStr,
-      acao: 'Ajuste de Proporção',
-      detalhes: `Proporção: ${quantidade} ${unidade} (fator ${fator.toFixed(2)}x)\n${alteracoes.join('\n')}`,
+      id: Date.now().toString(), data: dataStr, acao: 'Ajuste de Proporção',
+      detalhes: `Proporção: ${quantidade} un de ${embalagemVolume}L (vol. total: ${totalVolume}L, fator ${fatorQuimico.toFixed(2)}x)\n${alteracoes.join('\n')}`,
     };
-
     const formulaAtualizada: Formula = {
       ...selectedFormula,
       insumos: insumosAtualizados.map(({ _qtdAnterior, _qtdNova, ...rest }) => rest),
       historico: [...selectedFormula.historico, novoHistorico],
       updatedAt: now.toISOString().split('T')[0],
     };
-
     onUpdateFormula(formulaAtualizada);
     setInsumosAjustados({});
     setHasChanges(false);
     alert('Alterações salvas na fórmula original!');
   };
 
-  const predefinedQuantities = [1, 5, 10, 20, 30, 50, 80, 100];
+  const toggleNonChemical = (id: string) => {
+    setSelectedNonChemicals(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const predefinedQuantities = [1, 5, 10, 20, 25, 30, 50, 100];
+  const predefinedVolumes = [0.5, 1, 2, 5, 10, 20];
+
+  const custoTotal = calcularCustoTotal();
+  const custoUnitario = quantidade > 0 ? custoTotal / quantidade : 0;
 
   return (
     <div className="space-y-6">
-      {/* Select Formula */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Selecione a Fórmula
-          </label>
-          <select
-            value={selectedFormulaId}
-            onChange={(e) => setSelectedFormulaId(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="">Selecione...</option>
-            {formulas.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.nome} ({f.status === 'finalizado' ? '✓' : '○'})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Unidade
-          </label>
-          <select
-            value={unidade}
-            onChange={(e) => setUnidade(e.target.value as 'un' | 'kg' | 'L' | 'ml')}
-            className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="UN">UNIDADES</option>
-            <option value="KG">KG</option>
-            <option value="LT">LITROS</option>
-            <option value="ML">ML</option>
-            <option value="GR">GRAMAS</option>
-            <option value="PC">PEÇAS</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Quantity Selector */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">
-          Quantidade de Produção
-        </h3>
-
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <button
-            onClick={() => setQuantidade(Math.max(1, quantidade - 10))}
-            className="w-12 h-12 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 rounded-xl text-red-600 dark:text-red-400 font-bold text-lg transition-colors"
-          >
-            -10
-          </button>
-          <button
-            onClick={() => setQuantidade(Math.max(1, quantidade - 1))}
-            className="w-10 h-10 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 rounded-xl text-red-600 dark:text-red-400 font-bold transition-colors"
-          >
-            -1
-          </button>
-          
-          <div className="px-8 py-4 bg-blue-50 dark:bg-blue-900/30 rounded-2xl border-2 border-blue-500">
-            <span className="text-4xl font-bold text-blue-600 dark:text-blue-400">{quantidade}</span>
-            <span className="text-lg text-blue-500 dark:text-blue-400 ml-2">{unidade}</span>
-          </div>
-          
-          <button
-            onClick={() => setQuantidade(quantidade + 1)}
-            className="w-10 h-10 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 rounded-xl text-green-600 dark:text-green-400 font-bold transition-colors"
-          >
-            +1
-          </button>
-          <button
-            onClick={() => setQuantidade(quantidade + 10)}
-            className="w-12 h-12 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 rounded-xl text-green-600 dark:text-green-400 font-bold text-lg transition-colors"
-          >
-            +10
-          </button>
-        </div>
-
-        {/* Predefined */}
-        <div className="flex flex-wrap justify-center gap-2">
-          {predefinedQuantities.map((q) => (
-            <button
-              key={q}
-              onClick={() => setQuantidade(q)}
-              className={`px-4 py-2 rounded-xl font-medium transition-colors ${
-                quantidade === q
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              {q}
-            </button>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Selecione a Fórmula
+        </label>
+        <select
+          value={selectedFormulaId}
+          onChange={(e) => setSelectedFormulaId(e.target.value)}
+          className="w-full px-4 py-2.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
+        >
+          <option value="">Selecione...</option>
+          {formulas.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.nome} ({f.status === 'finalizado' ? '✓' : '○'}) — Rend: {f.rendimento} {f.unidade}
+            </option>
           ))}
-        </div>
-
-        {/* Fator */}
-        {selectedFormula && (
-          <div className="mt-4 text-center">
-            <span className="inline-block px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full text-sm font-medium">
-              Fator de Escala: {fator.toFixed(2)}x
-            </span>
-          </div>
-        )}
+        </select>
       </div>
 
-      {/* Calculated Insumos */}
       {selectedFormula && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">{selectedFormula.nome}</h3>
-                <span
-                  className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs text-white"
-                  style={{ backgroundColor: getGrupo(selectedFormula.grupoId)?.cor }}
-                >
-                  {getGrupo(selectedFormula.grupoId)?.nome}
-                </span>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Produção: {quantidade} {unidade}</p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                  Total: R$ {calcularCustoTotal().toFixed(2)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Insumo</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Qtd Original</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Quantidade</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {/* Químicos */}
-              {(selectedFormula.insumos || []).filter(i => i.quimico).map((insumo) => {
-                const qtdAjustada = getQuantidadeAjustada(insumo);
-                const total = qtdAjustada * insumo.valorUnitario;
-                const wasEdited = insumosAjustados[insumo.id] !== undefined;
-                
-                return (
-                  <tr key={insumo.id} className={`${wasEdited ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-amber-50/50 dark:bg-amber-900/10'}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <FlaskConical className="w-4 h-4 text-amber-500" />
-                        <span className="text-sm text-gray-900 dark:text-white">{insumo.nome}</span>
-                        {wasEdited && (
-                          <span className="px-1.5 py-0.5 bg-amber-500 text-white text-xs rounded">editado</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{insumo.quantidade.toFixed(3)} {insumo.unidade}</td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="text"
-                        value={getPropInputValue(insumo)}
-                        onFocus={() => handlePropInputFocus(insumo.id, insumo)}
-                        onChange={(e) => handlePropInputChange(insumo.id, e.target.value, true)}
-                        onBlur={() => handlePropInputBlur(insumo.id, true)}
-                        className="w-24 px-2 py-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-900 dark:text-white font-medium"
-                      />
-                      <span className="ml-1 text-xs text-gray-500">{insumo.unidade}</span>
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium text-right text-gray-900 dark:text-white">
-                      R$ {total.toFixed(2)}
-                    </td>
-                  </tr>
-                );
-              })}
-              {/* Não-químicos */}
-              {(selectedFormula.insumos || []).filter(i => !i.quimico).map((insumo) => {
-                const qtdAjustada = getQuantidadeAjustada(insumo);
-                const total = qtdAjustada * insumo.valorUnitario;
-                const wasEdited = insumosAjustados[insumo.id] !== undefined;
-                
-                return (
-                  <tr key={insumo.id} className={`${wasEdited ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-50/50 dark:bg-gray-700/30'}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Flag className="w-4 h-4 text-blue-500" />
-                        <span className="text-sm text-gray-900 dark:text-white">{insumo.nome}</span>
-                        {wasEdited && (
-                          <span className="px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded">editado</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{insumo.quantidade} {insumo.unidade}</td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="text"
-                        value={getPropInputValue(insumo)}
-                        onFocus={() => handlePropInputFocus(insumo.id, insumo)}
-                        onChange={(e) => handlePropInputChange(insumo.id, e.target.value, false)}
-                        onBlur={() => handlePropInputBlur(insumo.id, false)}
-                        className="w-24 px-2 py-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-900 dark:text-white font-medium"
-                      />
-                      <span className="ml-1 text-xs text-gray-500">{insumo.unidade}</span>
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium text-right text-gray-900 dark:text-white">
-                      R$ {total.toFixed(2)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {/* Actions */}
-          <div className="p-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-            {hasChanges && (
-              <span className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
-                ⚠️ Alterações não salvas na fórmula original
+        <>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-2 mb-1">
+              <FlaskConical className="w-5 h-5 text-blue-500" />
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">{selectedFormula.nome}</h3>
+              <span className="inline-block px-2 py-0.5 rounded-full text-xs text-white" style={{ backgroundColor: getGrupo(selectedFormula.grupoId)?.cor }}>
+                {getGrupo(selectedFormula.grupoId)?.nome}
               </span>
-            )}
-            <div className="flex gap-3 ml-auto">
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Rendimento da fórmula: <span className="font-semibold text-blue-600 dark:text-blue-400">{selectedFormula.rendimento} {selectedFormula.unidade}</span>
+              {' · '}{chemicals.length} químico(s) · {nonChemicals.length} não-químico(s)
+            </p>
 
-              {hasChanges && onUpdateFormula && (
-                <button
-                  onClick={handleSaveToOriginal}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors"
-                >
-                  <Save className="w-4 h-4" />
-                  Salvar na Original
-                </button>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-800">
+                <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-2">
+                  Volume por Embalagem
+                </label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {predefinedVolumes.map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => { setEmbalagemVolume(v); setEmbalagemVolumeInput(String(v)); }}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        embalagemVolume === v
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 border border-gray-200 dark:border-gray-600'
+                      }`}
+                    >
+                      {v}L
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={embalagemVolumeInput}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^\d.,]/g, '');
+                      setEmbalagemVolumeInput(val);
+                      const num = parseFloat(val.replace(',', '.'));
+                      if (!isNaN(num) && num > 0) setEmbalagemVolume(num);
+                    }}
+                    className="w-24 px-3 py-2 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-900 dark:text-white font-semibold text-center"
+                  />
+                  <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">Litros por unidade</span>
+                </div>
+              </div>
+
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 border border-green-100 dark:border-green-800">
+                <label className="block text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">
+                  Quantidade de Unidades
+                </label>
+                <div className="flex items-center gap-3 mb-3">
+                  <button onClick={() => setQuantidade(Math.max(1, quantidade - 10))} className="w-10 h-10 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 rounded-lg text-red-600 dark:text-red-400 font-bold text-sm">-10</button>
+                  <button onClick={() => setQuantidade(Math.max(1, quantidade - 1))} className="w-8 h-10 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 rounded-lg text-red-600 dark:text-red-400 font-bold">-1</button>
+                  <div className="px-5 py-2 bg-white dark:bg-gray-700 rounded-xl border-2 border-green-500 flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-green-600 dark:text-green-400">{quantidade}</span>
+                    <span className="text-sm text-green-500 dark:text-green-400">un</span>
+                  </div>
+                  <button onClick={() => setQuantidade(quantidade + 1)} className="w-8 h-10 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 rounded-lg text-green-600 dark:text-green-400 font-bold">+1</button>
+                  <button onClick={() => setQuantidade(quantidade + 10)} className="w-10 h-10 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 rounded-lg text-green-600 dark:text-green-400 font-bold text-sm">+10</button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {predefinedQuantities.map((q) => (
+                    <button key={q} onClick={() => setQuantidade(q)} className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${quantidade === q ? 'bg-green-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-green-100 dark:hover:bg-green-900/40 border border-gray-200 dark:border-gray-600'}`}>
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-3 text-center border border-purple-100 dark:border-purple-800">
+                <p className="text-[10px] uppercase tracking-wider text-purple-500 dark:text-purple-400 font-bold mb-1">Volume Total</p>
+                <p className="text-xl font-bold text-purple-700 dark:text-purple-300">{totalVolume.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L</p>
+              </div>
+              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 text-center border border-amber-100 dark:border-amber-800">
+                <p className="text-[10px] uppercase tracking-wider text-amber-500 dark:text-amber-400 font-bold mb-1">Fator Químicos</p>
+                <p className="text-xl font-bold text-amber-700 dark:text-amber-300">{fatorQuimico.toFixed(2)}x</p>
+              </div>
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3 text-center border border-emerald-100 dark:border-emerald-800">
+                <p className="text-[10px] uppercase tracking-wider text-emerald-500 dark:text-emerald-400 font-bold mb-1">Custo por Unidade</p>
+                <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300">R$ {custoUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </div>
             </div>
           </div>
 
-          {/* Histórico */}
-          {selectedFormula.historico && selectedFormula.historico.length > 0 && (
-            <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                📜 Histórico de Alterações
-              </h4>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {selectedFormula.historico.slice().reverse().map((h) => (
-                  <div key={h.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-gray-900 dark:text-white">{h.acao}</span>
-                      <span className="text-xs text-gray-500">{h.data}</span>
+          {nonChemicals.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Flag className="w-4 h-4 text-blue-500" />
+                Selecionar Itens Não-Químicos para esta Produção
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Marque os itens (embalagem, rótulo, tampa, etc.) que serão utilizados nesta produção. A quantidade será calculada com base nas unidades.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {nonChemicals.map((insumo) => (
+                  <label
+                    key={insumo.id}
+                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                      selectedNonChemicals[insumo.id]
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
+                        : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-700 opacity-60'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!selectedNonChemicals[insumo.id]}
+                      onChange={() => toggleNonChemical(insumo.id)}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{insumo.nome}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {insumo.quantidade} {insumo.unidade}/un · R$ {insumo.valorUnitario.toFixed(2)}/{insumo.unidade}
+                      </p>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-400 whitespace-pre-line">{h.detalhes}</p>
-                  </div>
+                    {selectedNonChemicals[insumo.id] && (
+                      <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                        {Math.round(quantidade * insumo.quantidade)} {insumo.unidade}
+                      </span>
+                    )}
+                  </label>
                 ))}
               </div>
             </div>
           )}
-        </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-700">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Insumos Calculados</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {quantidade} un de {embalagemVolume}L = {totalVolume}L total · Fator químicos: {fatorQuimico.toFixed(2)}x
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                    R$ {custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-gray-500">R$ {custoUnitario.toFixed(2)}/un</p>
+                </div>
+              </div>
+            </div>
+
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700/50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Insumo</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Qtd Base</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Qtd Calculada</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {chemicals.length > 0 && (
+                  <tr className="bg-amber-50/30 dark:bg-amber-900/5">
+                    <td colSpan={4} className="px-4 py-2">
+                      <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                        <FlaskConical className="w-3 h-3" /> Químicos (fator {fatorQuimico.toFixed(2)}x)
+                      </span>
+                    </td>
+                  </tr>
+                )}
+                {chemicals.map((insumo) => {
+                  const qtdAjustada = getQuantidadeAjustada(insumo);
+                  const total = qtdAjustada * insumo.valorUnitario;
+                  const wasEdited = insumosAjustados[insumo.id] !== undefined;
+                  return (
+                    <tr key={insumo.id} className={wasEdited ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-amber-50/50 dark:bg-amber-900/10'}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <FlaskConical className="w-4 h-4 text-amber-500" />
+                          <span className="text-sm text-gray-900 dark:text-white">{insumo.nome}</span>
+                          {wasEdited && <span className="px-1.5 py-0.5 bg-amber-500 text-white text-xs rounded">editado</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{insumo.quantidade.toFixed(3)} {insumo.unidade}</td>
+                      <td className="px-4 py-3">
+                        <input type="text" value={getPropInputValue(insumo)} onFocus={() => handlePropInputFocus(insumo.id, insumo)} onChange={(e) => handlePropInputChange(insumo.id, e.target.value, true)} onBlur={() => handlePropInputBlur(insumo.id, true)} className="w-24 px-2 py-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-900 dark:text-white font-medium" />
+                        <span className="ml-1 text-xs text-gray-500">{insumo.unidade}</span>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-right text-gray-900 dark:text-white">R$ {total.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+                {nonChemicals.filter(i => selectedNonChemicals[i.id]).length > 0 && (
+                  <tr className="bg-blue-50/30 dark:bg-blue-900/5">
+                    <td colSpan={4} className="px-4 py-2">
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1">
+                        <Flag className="w-3 h-3" /> Não-Químicos ({quantidade} unidades)
+                      </span>
+                    </td>
+                  </tr>
+                )}
+                {nonChemicals.filter(i => selectedNonChemicals[i.id]).map((insumo) => {
+                  const qtdAjustada = getQuantidadeAjustada(insumo);
+                  const total = qtdAjustada * insumo.valorUnitario;
+                  const wasEdited = insumosAjustados[insumo.id] !== undefined;
+                  return (
+                    <tr key={insumo.id} className={wasEdited ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-50/50 dark:bg-gray-700/30'}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Flag className="w-4 h-4 text-blue-500" />
+                          <span className="text-sm text-gray-900 dark:text-white">{insumo.nome}</span>
+                          {wasEdited && <span className="px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded">editado</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{insumo.quantidade} {insumo.unidade}/un</td>
+                      <td className="px-4 py-3">
+                        <input type="text" value={getPropInputValue(insumo)} onFocus={() => handlePropInputFocus(insumo.id, insumo)} onChange={(e) => handlePropInputChange(insumo.id, e.target.value, false)} onBlur={() => handlePropInputBlur(insumo.id, false)} className="w-24 px-2 py-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-900 dark:text-white font-medium" />
+                        <span className="ml-1 text-xs text-gray-500">{insumo.unidade}</span>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-right text-gray-900 dark:text-white">R$ {total.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <div className="p-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+              {hasChanges && (
+                <span className="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                  Alterações não salvas na fórmula original
+                </span>
+              )}
+              <div className="flex gap-3 ml-auto">
+                {hasChanges && onUpdateFormula && (
+                  <button onClick={handleSaveToOriginal} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors">
+                    <Save className="w-4 h-4" />
+                    Salvar na Original
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {selectedFormula.historico && selectedFormula.historico.length > 0 && (
+              <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Histórico de Alterações</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {selectedFormula.historico.slice().reverse().map((h) => (
+                    <div key={h.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-gray-900 dark:text-white">{h.acao}</span>
+                        <span className="text-xs text-gray-500">{h.data}</span>
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-400 whitespace-pre-line">{h.detalhes}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
       )}
-
-
     </div>
   );
 }
