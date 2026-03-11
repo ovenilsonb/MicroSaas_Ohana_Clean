@@ -56,8 +56,9 @@ src/
 - **Rendering**: `ReportTemplate.tsx` renders custom elements using percentage-based positioning (normalized from 794px editor canvas) for responsive scaling across screen and print
 - **Templates**: Saved to localStorage, assignable to specific report types (Fórmula, Proporção, Precificação, Vendas)
 
-## Version 1.43.0 Changes
+## Version 1.44.0 Changes
 
+- **ProporcaoTab restructured**: Non-chemical items (embalagem, rótulo, tampa) are now selected via checkboxes at proportion time instead of being locked in the formula. Chemicals scale by volume (`totalVolume / rendimento`), non-chemicals scale by unit count (`quantidade * qty_per_unit`). New "Volume por Embalagem" selector with predefined buttons (0.5L–20L). KPI cards: Volume Total, Fator Químicos, Custo por Unidade.
 - **Anotações per-user isolation**: Notes filtered by userId in both localStorage (`ohana_notes_${userId}`) and Supabase (`user_id` column). Hydration guard prevents cross-user data leakage during user switches.
 - **Dashboard improvements**: Compact KPI cards, revenue chart type selector (Area/Bar/Line), fixed horizontal bar chart icon (BarChart3)
 - **Sidebar active tab**: Curved connection style using CSS radial-gradient pseudo-elements for active menu items

@@ -1311,8 +1311,6 @@ function ProporcaoTab({
   onUpdateFormula, 
   quantidade,
   setQuantidade,
-  unidade,
-  setUnidade
 }: ProporcaoTabProps) {
   const [selectedFormulaId, setSelectedFormulaId] = useState('');
   const [insumosAjustados, setInsumosAjustados] = useState<Record<string, number>>({});
@@ -1352,6 +1350,10 @@ function ProporcaoTab({
     setPropInputs({});
     setHasChanges(false);
   }, [selectedFormulaId]);
+
+  useEffect(() => {
+    setPropInputs({});
+  }, [quantidade, embalagemVolume]);
 
   const getQuantidadeAjustada = (insumo: FormulaInsumo) => {
     if (insumosAjustados[insumo.id] !== undefined) {
@@ -1432,6 +1434,9 @@ function ProporcaoTab({
     const now = new Date();
     const dataStr = now.toLocaleString('pt-BR');
     const insumosAtualizados = (selectedFormula.insumos || []).map(insumo => {
+      if (!insumo.quimico && !selectedNonChemicals[insumo.id]) {
+        return { ...insumo, _qtdAnterior: insumo.quantidade, _qtdNova: insumo.quantidade };
+      }
       const qtdAjustada = getQuantidadeAjustada(insumo);
       const qtdOriginal = insumo.quantidade;
       const f = insumo.quimico ? fatorQuimico : quantidade;
