@@ -56,6 +56,13 @@ src/
 - **Rendering**: `ReportTemplate.tsx` renders custom elements using percentage-based positioning (normalized from 794px editor canvas) for responsive scaling across screen and print
 - **Templates**: Saved to localStorage, assignable to specific report types (Fórmula, Proporção, Precificação, Vendas)
 
+## Version 1.45.0 Changes
+
+- **Embalagem auto-matching in ProporcaoTab**: When selecting a volume (e.g., 2L), non-chemical insumos with variants are automatically matched to the correct variant price. Helper functions `extractVolumeFromName()` and `findMatchingVariant()` parse variant names (500ml, 1L, 2L, 5L) to match the selected embalagemVolume. Matched variant name and price shown in checkbox area and table.
+- **ProportionReport updated**: Now receives `embalagemVolume` and `insumosData`, shows separate sections for Químicos and Materiais (non-chemicals) with variant-matched prices. Includes safe division guards for zero quantities.
+- **Precificação dynamic volumes**: Replaced hardcoded '2L' | '5L' `unitType` with numeric `unitVolume`. Available volumes derived dynamically from embalagem insumo variants. Cost calculation split: `calcularCustoQuimicoPorLitro()` * volume + `calcularCustoNaoQuimicosPorUnidade()` with variant matching.
+- **Relatórios pricing button**: Single "Ver Preços" button showing saved volume, replaces old hardcoded 2L/5L buttons. Uses `unitVolume` with backward compat for legacy `unitType`.
+
 ## Version 1.44.0 Changes
 
 - **ProporcaoTab restructured**: Non-chemical items (embalagem, rótulo, tampa) are now selected via checkboxes at proportion time instead of being locked in the formula. Chemicals scale by volume (`totalVolume / rendimento`), non-chemicals scale by unit count (`quantidade * qty_per_unit`). New "Volume por Embalagem" selector with predefined buttons (0.5L–20L). KPI cards: Volume Total, Fator Químicos, Custo por Unidade.

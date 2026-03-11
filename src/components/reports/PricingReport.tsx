@@ -4,7 +4,7 @@ import { ReportTemplate } from './ReportTemplate';
 
 interface PricingReportProps {
   formula: Formula;
-  precificacao: Precificacao & { unitType: '2L' | '5L' };
+  precificacao: Precificacao & { unitVolume?: number; unitType?: string };
 }
 
 export const PricingReport: React.FC<PricingReportProps & { companyName?: string; companyLogo?: string; config?: any }> = ({ formula, precificacao, companyName, companyLogo, config }) => {
@@ -12,7 +12,7 @@ export const PricingReport: React.FC<PricingReportProps & { companyName?: string
   const rendimento = formula.rendimento || 1;
   const custoPorLitro = custoTotal / rendimento;
   
-  const volumeEmbalagem = precificacao.unitType === '2L' ? 2 : 5;
+  const volumeEmbalagem = (precificacao as any).unitVolume || ((precificacao as any).unitType === '5L' ? 5 : 2);
   const custoProdutoEmbalagem = custoPorLitro * volumeEmbalagem;
   const custoTotalUnidade = custoProdutoEmbalagem + (precificacao.custosFixos || 0);
 
@@ -34,7 +34,7 @@ export const PricingReport: React.FC<PricingReportProps & { companyName?: string
           </div>
           <div className="bg-slate-100 px-4 py-2 rounded-lg border border-slate-200">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Apresentação</p>
-            <p className="text-sm font-bold text-slate-700">Embalagem de {precificacao.unitType}</p>
+            <p className="text-sm font-bold text-slate-700">Embalagem de {volumeEmbalagem >= 1 ? `${volumeEmbalagem}L` : `${volumeEmbalagem * 1000}ml`}</p>
           </div>
         </div>
 

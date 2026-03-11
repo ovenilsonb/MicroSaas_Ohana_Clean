@@ -43,9 +43,10 @@ export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes
   const [showFormulaReport, setShowFormulaReport] = useState(false);
   const [showProportionReport, setShowProportionReport] = useState(false);
   const [showPricingReport, setShowPricingReport] = useState(false);
-  const [selectedPricingType, setSelectedPricingType] = useState<'2L' | '5L'>('2L');
+  const [selectedPricingVolume, setSelectedPricingVolume] = useState<number>(2);
   const [proportionQuantidade, setProportionQuantidade] = useState(1);
   const [proportionUnidade, setProportionUnidade] = useState('UN');
+  const [proportionEmbalagemVolume, setProportionEmbalagemVolume] = useState(2);
   const [selectedPedido, setSelectedPedido] = useState<Pedido | null>(null);
   const [showPedidoReport, setShowPedidoReport] = useState(false);
 
@@ -206,22 +207,13 @@ export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes
                     <button
                       onClick={() => {
                         setSelectedFormula(formula);
-                        setSelectedPricingType('2L');
+                        const saved = precificacoes[formula.id] as any;
+                        setSelectedPricingVolume(saved?.unitVolume || (saved?.unitType === '5L' ? 5 : 2));
                         setShowPricingReport(true);
                       }}
                       className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-[10px] font-bold uppercase tracking-wider"
                     >
-                      Ver Preços 2L
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedFormula(formula);
-                        setSelectedPricingType('5L');
-                        setShowPricingReport(true);
-                      }}
-                      className="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-900/60 transition-colors text-[10px] font-bold uppercase tracking-wider"
-                    >
-                      Ver Preços 5L
+                      Ver Preços ({((precificacoes[formula.id] as any)?.unitVolume || ((precificacoes[formula.id] as any)?.unitType === '5L' ? 5 : 2))}L)
                     </button>
                   </div>
                 </div>
@@ -394,24 +386,34 @@ export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 no-print bg-gray-50 dark:bg-gray-700/50 p-6 rounded-2xl border border-gray-100 dark:border-gray-600">
                 <div className="flex flex-wrap items-center gap-6">
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Quantidade Alvo</label>
+                    <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Quantidade (Unidades)</label>
                     <div className="flex items-center">
                       <input
                         type="number"
+                        min={1}
                         value={proportionQuantidade}
-                        onChange={(e) => setProportionQuantidade(Number(e.target.value))}
-                        className="w-32 px-4 py-2.5 bg-white dark:bg-gray-800 border-2 border-blue-100 dark:border-gray-600 rounded-l-xl text-lg font-black text-blue-600 focus:border-blue-500 outline-none transition-all shadow-inner"
+                        onChange={(e) => setProportionQuantidade(Math.max(1, Number(e.target.value) || 1))}
+                        className="w-32 px-4 py-2.5 bg-white dark:bg-gray-800 border-2 border-blue-100 dark:border-gray-600 rounded-xl text-lg font-black text-blue-600 focus:border-blue-500 outline-none transition-all shadow-inner"
                       />
-                      <select
-                        value={proportionUnidade}
-                        onChange={(e) => setProportionUnidade(e.target.value)}
-                        className="px-4 py-2.5 bg-blue-50 dark:bg-gray-700 border-2 border-l-0 border-blue-100 dark:border-gray-600 rounded-r-xl text-sm font-bold text-blue-700 focus:border-blue-500 outline-none transition-all"
-                      >
-                        <option value="UN">UN</option>
-                        <option value="KG">KG</option>
-                        <option value="LT">LT</option>
-                        <option value="PC">PC</option>
-                      </select>
+                    </div>
+                  </div>
+                  <div className="hidden sm:block h-12 w-px bg-gray-200 dark:bg-gray-600"></div>
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Volume Embalagem</label>
+                    <div className="flex gap-1">
+                      {[0.5, 1, 2, 5, 10, 20].map(v => (
+                        <button
+                          key={v}
+                          onClick={() => setProportionEmbalagemVolume(v)}
+                          className={`px-3 py-2 rounded-lg text-sm font-bold transition-all ${
+                            proportionEmbalagemVolume === v
+                              ? 'bg-indigo-600 text-white shadow-sm'
+                              : 'bg-white dark:bg-gray-800 text-gray-500 border border-gray-200 dark:border-gray-600 hover:bg-indigo-50'
+                          }`}
+                        >
+                          {v}L
+                        </button>
+                      ))}
                     </div>
                   </div>
                   <div className="hidden sm:block h-12 w-px bg-gray-200 dark:bg-gray-600"></div>
@@ -433,6 +435,8 @@ export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes
                   formula={selectedFormula}
                   quantidade={proportionQuantidade}
                   unidade={proportionUnidade}
+                  embalagemVolume={proportionEmbalagemVolume}
+                  insumosData={insumos}
                   companyName={companyName}
                   companyLogo={companyLogo}
                   config={getTemplateConfig('proportion')}
@@ -461,7 +465,7 @@ export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes
                 <div className="print-container">
                   <PricingReport 
                     formula={selectedFormula}
-                    precificacao={{ ...precificacoes[selectedFormula.id], unitType: selectedPricingType }}
+                    precificacao={{ ...precificacoes[selectedFormula.id], unitVolume: selectedPricingVolume }}
                     companyName={companyName}
                     companyLogo={companyLogo}
                     config={getTemplateConfig('pricing')}

@@ -787,6 +787,7 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
         <ProporcaoTab 
           formulas={formulas} 
           grupos={grupos} 
+          insumosData={insumos}
           onUpdateFormula={(updatedFormula) => {
             setFormulas(prev => prev.map(f => f.id === updatedFormula.id ? updatedFormula : f));
           }}
@@ -1295,9 +1296,26 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
 }
 
 // Proporcao Tab Component
+function extractVolumeFromName(name: string): number | null {
+  const mlMatch = name.match(/(\d+)\s*ml/i);
+  if (mlMatch) return parseInt(mlMatch[1]) / 1000;
+  const lMatch = name.match(/(\d+(?:[.,]\d+)?)\s*(?:L|LT|litro)/i);
+  if (lMatch) return parseFloat(lMatch[1].replace(',', '.'));
+  return null;
+}
+
+function findMatchingVariant(insumo: Insumo, volumeL: number) {
+  if (!insumo.variantes?.length) return null;
+  return insumo.variantes.find(v => {
+    const vol = extractVolumeFromName(v.nome);
+    return vol !== null && Math.abs(vol - volumeL) < 0.01;
+  }) || null;
+}
+
 interface ProporcaoTabProps {
   formulas: Formula[];
   grupos: Grupo[];
+  insumosData: Insumo[];
   onUpdateFormula?: (formula: Formula) => void;
   quantidade: number;
   setQuantidade: (value: number) => void;
@@ -1308,6 +1326,7 @@ interface ProporcaoTabProps {
 function ProporcaoTab({ 
   formulas, 
   grupos, 
+  insumosData,
   onUpdateFormula, 
   quantidade,
   setQuantidade,
@@ -1329,6 +1348,24 @@ function ProporcaoTab({
     (selectedFormula?.insumos || []).filter(i => i.quimico), 
     [selectedFormula]
   );
+
+  const getEffectivePrice = useMemo(() => {
+    const cache: Record<string, { price: number; variantName: string | null }> = {};
+    nonChemicals.forEach(fi => {
+      const fullInsumo = insumosData.find(ins => ins.id === fi.insumoId);
+      if (fullInsumo && fullInsumo.variantes && fullInsumo.variantes.length > 0) {
+        const matched = findMatchingVariant(fullInsumo, embalagemVolume);
+        if (matched) {
+          cache[fi.id] = { price: matched.valorUnitario, variantName: matched.nome };
+        } else {
+          cache[fi.id] = { price: fi.valorUnitario, variantName: null };
+        }
+      } else {
+        cache[fi.id] = { price: fi.valorUnitario, variantName: null };
+      }
+    });
+    return cache;
+  }, [nonChemicals, insumosData, embalagemVolume]);
 
   const totalVolume = quantidade * embalagemVolume;
   const fatorQuimico = selectedFormula ? totalVolume / (selectedFormula.rendimento || 1) : 1;
@@ -1373,7 +1410,9 @@ function ProporcaoTab({
     });
     nonChemicals.forEach(i => {
       if (selectedNonChemicals[i.id]) {
-        total += getQuantidadeAjustada(i) * i.valorUnitario;
+        const effectiveInfo = getEffectivePrice[i.id];
+        const price = effectiveInfo ? effectiveInfo.price : i.valorUnitario;
+        total += getQuantidadeAjustada(i) * price;
       }
     });
     return total;
@@ -1594,34 +1633,55 @@ function ProporcaoTab({
                 Marque os itens (embalagem, rótulo, tampa, etc.) que serão utilizados nesta produção. A quantidade será calculada com base nas unidades.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {nonChemicals.map((insumo) => (
-                  <label
-                    key={insumo.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                      selectedNonChemicals[insumo.id]
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
-                        : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-700 opacity-60'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!selectedNonChemicals[insumo.id]}
-                      onChange={() => toggleNonChemical(insumo.id)}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{insumo.nome}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {insumo.quantidade} {insumo.unidade}/un · R$ {insumo.valorUnitario.toFixed(2)}/{insumo.unidade}
-                      </p>
-                    </div>
-                    {selectedNonChemicals[insumo.id] && (
-                      <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                        {Math.round(quantidade * insumo.quantidade)} {insumo.unidade}
-                      </span>
-                    )}
-                  </label>
-                ))}
+                {nonChemicals.map((insumo) => {
+                  const effectiveInfo = getEffectivePrice[insumo.id];
+                  const price = effectiveInfo ? effectiveInfo.price : insumo.valorUnitario;
+                  const variantName = effectiveInfo?.variantName;
+                  const priceChanged = Math.abs(price - insumo.valorUnitario) > 0.001;
+                  return (
+                    <label
+                      key={insumo.id}
+                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                        selectedNonChemicals[insumo.id]
+                          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
+                          : 'bg-gray-50 dark:bg-gray-700/30 border-gray-200 dark:border-gray-700 opacity-60'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!selectedNonChemicals[insumo.id]}
+                        onChange={() => toggleNonChemical(insumo.id)}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {insumo.nome}
+                          {variantName && (
+                            <span className="ml-1 text-xs font-semibold text-indigo-500">({variantName})</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {insumo.quantidade} {insumo.unidade}/un · R$ {price.toFixed(2)}/{insumo.unidade}
+                          {priceChanged && (
+                            <span className="ml-1 text-green-600 dark:text-green-400 font-semibold">
+                              (era R$ {insumo.valorUnitario.toFixed(2)})
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      {selectedNonChemicals[insumo.id] && (
+                        <div className="text-right whitespace-nowrap">
+                          <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 block">
+                            {Math.round(quantidade * insumo.quantidade)} {insumo.unidade}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            R$ {(Math.round(quantidade * insumo.quantidade) * price).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </label>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1696,7 +1756,9 @@ function ProporcaoTab({
                 )}
                 {nonChemicals.filter(i => selectedNonChemicals[i.id]).map((insumo) => {
                   const qtdAjustada = getQuantidadeAjustada(insumo);
-                  const total = qtdAjustada * insumo.valorUnitario;
+                  const effectiveInfo = getEffectivePrice[insumo.id];
+                  const price = effectiveInfo ? effectiveInfo.price : insumo.valorUnitario;
+                  const total = qtdAjustada * price;
                   const wasEdited = insumosAjustados[insumo.id] !== undefined;
                   return (
                     <tr key={insumo.id} className={wasEdited ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-gray-50/50 dark:bg-gray-700/30'}>
@@ -1704,10 +1766,13 @@ function ProporcaoTab({
                         <div className="flex items-center gap-2">
                           <Flag className="w-4 h-4 text-blue-500" />
                           <span className="text-sm text-gray-900 dark:text-white">{insumo.nome}</span>
+                          {effectiveInfo?.variantName && (
+                            <span className="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs rounded font-medium">{effectiveInfo.variantName}</span>
+                          )}
                           {wasEdited && <span className="px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded">editado</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{insumo.quantidade} {insumo.unidade}/un</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{insumo.quantidade} {insumo.unidade}/un · R$ {price.toFixed(2)}</td>
                       <td className="px-4 py-3">
                         <input type="text" value={getPropInputValue(insumo)} onFocus={() => handlePropInputFocus(insumo.id, insumo)} onChange={(e) => handlePropInputChange(insumo.id, e.target.value, false)} onBlur={() => handlePropInputBlur(insumo.id, false)} className="w-24 px-2 py-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-900 dark:text-white font-medium" />
                         <span className="ml-1 text-xs text-gray-500">{insumo.unidade}</span>

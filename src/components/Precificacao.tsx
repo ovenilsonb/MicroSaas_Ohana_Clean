@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   List,
@@ -48,7 +48,6 @@ import { CurrencyInput } from './ui/CurrencyInput';
 
 type ViewMode = 'list' | 'grid';
 type SortMode = 'az' | 'za' | 'asc' | 'desc';
-type UnitType = '2L' | '5L';
 type TabType = 'precos' | 'listas';
 
 // Tipos para o novo sistema de Lista de Preços
@@ -93,6 +92,14 @@ interface ListaPrecoProps {
   setPrecificacoes: React.Dispatch<React.SetStateAction<Record<string, PrecificacaoType>>>;
 }
 
+function extractVolumeFromName(name: string): number | null {
+  const mlMatch = name.match(/(\d+)\s*ml/i);
+  if (mlMatch) return parseInt(mlMatch[1]) / 1000;
+  const lMatch = name.match(/(\d+(?:[.,]\d+)?)\s*(?:L|LT|litro)/i);
+  if (lMatch) return parseFloat(lMatch[1].replace(',', '.'));
+  return null;
+}
+
 export function Precificacao({ 
   formulas = [], 
   insumosData = [], 
@@ -118,13 +125,24 @@ export function Precificacao({
   const [selectedFormula, setSelectedFormula] = useState<Formula | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-  // Form state para Precificação
+  const availableVolumes = useMemo(() => {
+    const volumes = new Set<number>();
+    insumosData.filter(i => !i.quimico && i.variantes && i.variantes.length > 0).forEach(insumo => {
+      insumo.variantes!.forEach(v => {
+        const vol = extractVolumeFromName(v.nome);
+        if (vol !== null) volumes.add(vol);
+      });
+    });
+    const arr = Array.from(volumes).sort((a, b) => a - b);
+    return arr.length > 0 ? arr : [1, 2, 5];
+  }, [insumosData]);
+
   const [custosFixos, setCustosFixos] = useState(0);
   const [precoVarejo, setPrecoVarejo] = useState(0);
   const [precoAtacado, setPrecoAtacado] = useState(0);
   const [quantidadeFardo, setQuantidadeFardo] = useState(6);
   const [precoFardo, setPrecoFardo] = useState(0);
-  const [unitType, setUnitType] = useState<UnitType>('2L');
+  const [unitVolume, setUnitVolume] = useState<number>(2);
 
   const [showListaModal, setShowListaModal] = useState(false);
   const [editingLista, setEditingLista] = useState<ListaPrecoAvancada | null>(null);
@@ -170,20 +188,39 @@ export function Precificacao({
   const [showListaPreviewModal, setShowListaPreviewModal] = useState(false);
   const [expandedRegras, setExpandedRegras] = useState<Record<string, boolean>>({});
 
-  // Funções de cálculo
   const calcularCustoTotal = (formula: Formula) => {
     if (!formula) return 0;
     return (formula.insumos || []).reduce((sum, i) => sum + (i.quantidade * i.valorUnitario), 0);
   };
 
-  const calcularCustoUnidade = (formula: Formula) => {
+  const calcularCustoQuimicoPorLitro = (formula: Formula) => {
     if (!formula) return 0;
-    const custoTotal = calcularCustoTotal(formula);
-    return formula.rendimento > 0 ? custoTotal / formula.rendimento : 0;
+    const custoQuimicos = (formula.insumos || []).filter(i => i.quimico).reduce((sum, i) => sum + (i.quantidade * i.valorUnitario), 0);
+    return formula.rendimento > 0 ? custoQuimicos / formula.rendimento : 0;
   };
 
-  const calcularCustoUnidade5L = (formula: Formula) => {
-    return calcularCustoUnidade(formula) * 2.5;
+  const calcularCustoNaoQuimicosPorUnidade = (formula: Formula, volume: number) => {
+    if (!formula) return 0;
+    return (formula.insumos || []).filter(i => !i.quimico).reduce((sum, fi) => {
+      const fullInsumo = insumosData.find(ins => ins.id === fi.insumoId);
+      let price = fi.valorUnitario;
+      if (fullInsumo?.variantes?.length) {
+        const matched = fullInsumo.variantes.find(v => {
+          const vol = extractVolumeFromName(v.nome);
+          return vol !== null && Math.abs(vol - volume) < 0.01;
+        });
+        if (matched) price = matched.valorUnitario;
+      }
+      return sum + fi.quantidade * price;
+    }, 0);
+  };
+
+  const calcularCustoUnidade = (formula: Formula, volume?: number) => {
+    if (!formula) return 0;
+    const vol = volume ?? unitVolume;
+    const custoQuimico = calcularCustoQuimicoPorLitro(formula) * vol;
+    const custoMateriais = calcularCustoNaoQuimicosPorUnidade(formula, vol);
+    return custoQuimico + custoMateriais;
   };
 
   const getGrupo = (grupoId: string) => grupos.find(g => g.id === grupoId);
@@ -302,23 +339,23 @@ export function Precificacao({
       setPrecoAtacado(existingPricing.precoAtacado);
       setQuantidadeFardo(existingPricing.quantidadeFardo);
       setPrecoFardo(existingPricing.precoFardo);
-      setUnitType((existingPricing as any).unitType || '2L');
+      setUnitVolume((existingPricing as any).unitVolume || ((existingPricing as any).unitType === '5L' ? 5 : 2));
     } else {
-      const custoUn = unitType === '5L' ? calcularCustoUnidade5L(formula) : calcularCustoUnidade(formula);
+      const custoUn = calcularCustoUnidade(formula, 2);
       setCustosFixos(0);
       setPrecoVarejo(roundToVarejo(custoUn * 2));
       setPrecoAtacado(roundToAtacado(custoUn * 1.8));
       setQuantidadeFardo(6);
       setPrecoFardo(roundToFardo(custoUn * 6 * 1.5));
-      setUnitType('2L');
+      setUnitVolume(2);
     }
     setShowModal(true);
   };
 
-  const handleUnitChange = (newUnit: UnitType) => {
+  const handleUnitChange = (newVolume: number) => {
     if (!selectedFormula) return;
-    setUnitType(newUnit);
-    const custoUn = newUnit === '5L' ? calcularCustoUnidade5L(selectedFormula) : calcularCustoUnidade(selectedFormula);
+    setUnitVolume(newVolume);
+    const custoUn = calcularCustoUnidade(selectedFormula, newVolume);
     const custoTotal = custoUn + custosFixos;
     setPrecoVarejo(roundToVarejo(custoTotal * 2));
     setPrecoAtacado(roundToAtacado(custoTotal * 1.8));
@@ -328,7 +365,7 @@ export function Precificacao({
   const handleSavePricing = () => {
     if (!selectedFormula) return;
 
-    const pricing: PrecificacaoType & { unitType: UnitType } = {
+    const pricing: PrecificacaoType & { unitVolume: number } = {
       id: selectedFormula.id,
       formulaId: selectedFormula.id,
       custosFixos,
@@ -336,7 +373,7 @@ export function Precificacao({
       precoAtacado,
       quantidadeFardo,
       precoFardo,
-      unitType,
+      unitVolume,
       updatedAt: new Date().toISOString(),
     };
 
@@ -348,9 +385,8 @@ export function Precificacao({
     setShowModal(false);
   };
 
-  // Cálculos do modal de precificação
   const custoUnidadeBase = selectedFormula 
-    ? (unitType === '5L' ? calcularCustoUnidade5L(selectedFormula) : calcularCustoUnidade(selectedFormula))
+    ? calcularCustoUnidade(selectedFormula)
     : 0;
   const custoTotalUnidade = custoUnidadeBase + custosFixos;
   
@@ -971,31 +1007,23 @@ export function Precificacao({
       >
         {selectedFormula && (
           <div className="space-y-6">
-            {/* Unit Type Selector */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tipo de Unidade:</span>
-                <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
-                  <button
-                    onClick={() => handleUnitChange('2L')}
-                    className={`px-5 py-2 rounded-lg font-medium text-sm transition-all ${
-                      unitType === '2L'
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                    }`}
-                  >
-                    2 Litros
-                  </button>
-                  <button
-                    onClick={() => handleUnitChange('5L')}
-                    className={`px-5 py-2 rounded-lg font-medium text-sm transition-all ${
-                      unitType === '5L'
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                    }`}
-                  >
-                    5 Litros
-                  </button>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Volume:</span>
+                <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1 gap-0.5">
+                  {availableVolumes.map(vol => (
+                    <button
+                      key={vol}
+                      onClick={() => handleUnitChange(vol)}
+                      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                        unitVolume === vol
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {vol >= 1 ? `${vol}L` : `${vol * 1000}ml`}
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
@@ -1011,7 +1039,7 @@ export function Precificacao({
                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                     <Calculator size={18} className="text-blue-500" />
-                    Composição de Custos ({unitType})
+                    Composição de Custos ({unitVolume >= 1 ? `${unitVolume}L` : `${unitVolume * 1000}ml`})
                   </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                     <div className="p-3 bg-gray-50 dark:bg-gray-700/30 rounded-xl">
@@ -1027,7 +1055,7 @@ export function Precificacao({
                       </p>
                     </div>
                     <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-xl border border-blue-100 dark:border-blue-500/20">
-                      <p className="text-[10px] uppercase tracking-wider font-bold text-blue-600 dark:text-blue-400 mb-1">Custo/Un ({unitType})</p>
+                      <p className="text-[10px] uppercase tracking-wider font-bold text-blue-600 dark:text-blue-400 mb-1">Custo/Un ({unitVolume >= 1 ? `${unitVolume}L` : `${unitVolume * 1000}ml`})</p>
                       <p className="text-lg font-bold text-blue-700 dark:text-blue-300">
                         R$ {custoUnidadeBase.toFixed(2)}
                       </p>
