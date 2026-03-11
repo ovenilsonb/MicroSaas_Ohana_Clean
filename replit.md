@@ -55,3 +55,9 @@ src/
 - **Integration**: Accessed from `ReportConfig.tsx` via "Editar Cabeçalho / Rodapé" button per template
 - **Rendering**: `ReportTemplate.tsx` renders custom elements using percentage-based positioning (normalized from 794px editor canvas) for responsive scaling across screen and print
 - **Templates**: Saved to localStorage, assignable to specific report types (Fórmula, Proporção, Precificação, Vendas)
+
+## Version 1.43.0 Changes
+
+- **Anotações per-user isolation**: Notes filtered by userId in both localStorage (`ohana_notes_${userId}`) and Supabase (`user_id` column). Hydration guard prevents cross-user data leakage during user switches.
+- **Dashboard improvements**: Compact KPI cards, revenue chart type selector (Area/Bar/Line), fixed horizontal bar chart icon (BarChart3)
+- **Sidebar active tab**: Curved connection style using CSS radial-gradient pseudo-elements for active menu items

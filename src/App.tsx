@@ -740,7 +740,7 @@ export function App() {
           />
         );
       case 'anotacoes':
-        return <Anotacoes />;
+        return <Anotacoes currentUser={currentUser} />;
       case 'usuarios':
         return <Usuarios users={users} setUsers={setUsers} groups={groups} setGroups={setGroups} currentUser={currentUser} />;
       case 'relatorios':

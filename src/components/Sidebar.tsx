@@ -148,14 +148,20 @@ export function Sidebar({
             <button
               key={item.id}
               onClick={() => handleModuleClick(item.id, item.label)}
-              className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+              className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 transition-all duration-200 ${
                 isActive
-                  ? 'bg-blue-800 dark:bg-blue-900 shadow-lg shadow-black/20'
+                  ? 'bg-blue-800 dark:bg-blue-900 shadow-lg shadow-black/20 sidebar-active-curved -mr-3'
                   : isLocked
-                  ? 'opacity-40 cursor-pointer hover:opacity-55'
-                  : 'hover:bg-white/10'
+                  ? 'opacity-40 cursor-pointer hover:opacity-55 rounded-xl'
+                  : 'hover:bg-white/10 rounded-xl'
               }`}
             >
+              {isActive && (
+                <>
+                  <span className="sidebar-curve-top" />
+                  <span className="sidebar-curve-bottom" />
+                </>
+              )}
               <motion.div
                 animate={isActive ? {
                   scale: [1, 1.1, 1],
@@ -198,14 +204,20 @@ export function Sidebar({
             return (
               <button
                 onClick={() => handleModuleClick(producaoItem.id, producaoItem.label)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                className={`w-full flex items-center gap-3 px-4 py-3 transition-all duration-200 ${
                   activeModule === producaoItem.id
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30 sidebar-active-curved -mr-3'
                     : isLocked
-                    ? 'opacity-40 cursor-pointer hover:opacity-55 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/20'
-                    : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/40 hover:to-orange-500/40 border border-amber-400/30'
+                    ? 'opacity-40 cursor-pointer hover:opacity-55 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/20 rounded-xl'
+                    : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/40 hover:to-orange-500/40 border border-amber-400/30 rounded-xl'
                 }`}
               >
+                {activeModule === producaoItem.id && (
+                  <>
+                    <span className="sidebar-curve-top sidebar-curve-producao" />
+                    <span className="sidebar-curve-bottom sidebar-curve-producao" />
+                  </>
+                )}
                 <div className={`p-1.5 rounded-lg relative ${activeModule === producaoItem.id ? 'bg-white/20' : 'bg-amber-400/20'}`}>
                   <producaoItem.icon className={`w-5 h-5 flex-shrink-0 ${activeModule === producaoItem.id ? 'text-white' : 'text-amber-400'}`} />
                   {isLocked && (
@@ -245,12 +257,18 @@ export function Sidebar({
         {/* Anotações */}
         <button
           onClick={() => handleModuleClick('anotacoes', 'Anotações')}
-          className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+          className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 transition-all duration-200 ${
             activeModule === 'anotacoes'
-              ? 'bg-blue-800 dark:bg-blue-900 shadow-lg shadow-black/20'
-              : 'hover:bg-white/10'
+              ? 'bg-blue-800 dark:bg-blue-900 shadow-lg shadow-black/20 sidebar-active-curved -mr-3'
+              : 'hover:bg-white/10 rounded-xl'
           }`}
         >
+          {activeModule === 'anotacoes' && (
+            <>
+              <span className="sidebar-curve-top" />
+              <span className="sidebar-curve-bottom" />
+            </>
+          )}
           <motion.div
             animate={activeModule === 'anotacoes' ? { scale: 1.2, rotate: [0, -10, 10, 0] } : { scale: 1, rotate: 0 }}
             transition={{ duration: 0.3 }}
@@ -270,14 +288,20 @@ export function Sidebar({
           return (
             <button
               onClick={() => handleModuleClick('usuarios', 'Usuários e Acessos')}
-              className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+              className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 transition-all ${
                 activeModule === 'usuarios'
-                  ? 'active'
+                  ? 'active sidebar-active-curved -mr-3 bg-blue-800 dark:bg-blue-900 shadow-lg shadow-black/20'
                   : isLocked
-                  ? 'opacity-40 hover:opacity-55'
-                  : ''
+                  ? 'opacity-40 hover:opacity-55 rounded-xl'
+                  : 'rounded-xl'
               }`}
             >
+              {activeModule === 'usuarios' && (
+                <>
+                  <span className="sidebar-curve-top" />
+                  <span className="sidebar-curve-bottom" />
+                </>
+              )}
               <motion.div
                 animate={activeModule === 'usuarios' ? { scale: 1.2, rotate: [0, -10, 10, 0] } : { scale: 1, rotate: 0 }}
                 transition={{ duration: 0.3 }}
@@ -306,14 +330,20 @@ export function Sidebar({
           return (
             <button
               onClick={() => handleModuleClick('config', 'Configurações')}
-              className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+              className={`liquid-glass-item w-full flex items-center gap-3 px-4 py-3 transition-all ${
                 activeModule === 'config'
-                  ? 'active'
+                  ? 'active sidebar-active-curved -mr-3 bg-blue-800 dark:bg-blue-900 shadow-lg shadow-black/20'
                   : isLocked
-                  ? 'opacity-40 hover:opacity-55'
-                  : ''
+                  ? 'opacity-40 hover:opacity-55 rounded-xl'
+                  : 'rounded-xl'
               }`}
             >
+              {activeModule === 'config' && (
+                <>
+                  <span className="sidebar-curve-top" />
+                  <span className="sidebar-curve-bottom" />
+                </>
+              )}
               <motion.div
                 animate={activeModule === 'config' ? { rotate: 90 } : { rotate: 0 }}
                 transition={{ duration: 0.5 }}

@@ -169,6 +169,48 @@ body {
   background: rgba(255, 255, 255, 0.12) !important;
 }
 
+/* Sidebar Active Curved Connection */
+.sidebar-active-curved {
+  position: relative;
+  border-radius: 16px 0 0 16px !important;
+}
+
+.sidebar-curve-top,
+.sidebar-curve-bottom {
+  position: absolute;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.sidebar-curve-top {
+  bottom: 100%;
+  background: radial-gradient(circle at 0 0, transparent 14px, rgb(30 64 175) 14.5px);
+}
+
+.sidebar-curve-bottom {
+  top: 100%;
+  background: radial-gradient(circle at 0 100%, transparent 14px, rgb(30 64 175) 14.5px);
+}
+
+.dark .sidebar-curve-top {
+  background: radial-gradient(circle at 0 0, transparent 14px, rgb(30 58 138) 14.5px);
+}
+
+.dark .sidebar-curve-bottom {
+  background: radial-gradient(circle at 0 100%, transparent 14px, rgb(30 58 138) 14.5px);
+}
+
+.sidebar-curve-top.sidebar-curve-producao {
+  background: radial-gradient(circle at 0 0, transparent 14px, rgb(245 158 11) 14.5px);
+}
+
+.sidebar-curve-bottom.sidebar-curve-producao {
+  background: radial-gradient(circle at 0 100%, transparent 14px, rgb(249 115 22) 14.5px);
+}
+
 /* Transições suaves */
 * {
   transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;

@@ -5,9 +5,9 @@ import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import {
   Package, Factory, Users, DollarSign, ShoppingCart, FileText, CheckCircle2,
-  Plus, X, Settings2, BarChart2, PieChart as PieChartIcon, LineChart as LineChartIcon,
+  Plus, X, Settings2, BarChart3, BarChart2, PieChart as PieChartIcon, LineChart as LineChartIcon,
   TrendingUp, AlertTriangle, Activity, Star, Clock, Layers,
-  ArrowUpRight, ArrowDownRight, Zap, Target, LayoutGrid, Check
+  ArrowUpRight, ArrowDownRight, Zap, Target, LayoutGrid, Check, AreaChart as AreaChartIcon
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -138,16 +138,14 @@ function KpiCard({ title, value, sub, icon: Icon, gradient, trend }: {
   title: string; value: string; sub?: string; icon: any; gradient: string; trend?: 'up'|'down'|'neutral';
 }) {
   return (
-    <div className={`relative flex flex-col h-full bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}>
-      {/* Glowing accent */}
-      <div className={`absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity bg-gradient-to-br ${gradient} rounded-2xl pointer-events-none`} />
-      {/* Top row */}
-      <div className="flex items-start justify-between mb-3">
-        <div className={`p-2.5 rounded-xl bg-gradient-to-br ${gradient} shadow-sm`}>
-          <Icon className="w-5 h-5 text-white" />
+    <div className={`relative flex flex-col h-full bg-white dark:bg-gray-900 rounded-xl p-3 shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200`}>
+      <div className={`absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity bg-gradient-to-br ${gradient} rounded-xl pointer-events-none`} />
+      <div className="flex items-start justify-between mb-2">
+        <div className={`p-2 rounded-lg bg-gradient-to-br ${gradient} shadow-sm`}>
+          <Icon className="w-4 h-4 text-white" />
         </div>
         {trend && (
-          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+          <span className={`inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full ${
             trend === 'up' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
             : trend === 'down' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
             : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
@@ -156,9 +154,9 @@ function KpiCard({ title, value, sub, icon: Icon, gradient, trend }: {
           </span>
         )}
       </div>
-      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</p>
-      <p className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1 leading-none">{value}</p>
-      {sub && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">{sub}</p>}
+      <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</p>
+      <p className="text-xl font-extrabold text-gray-900 dark:text-white mt-0.5 leading-none">{value}</p>
+      {sub && <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -244,6 +242,7 @@ export function Dashboard({ darkMode, formulas = [], insumos = [], pedidos = [] 
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [revenuePeriod, setRevenuePeriod] = useState<'7d'|'30d'|'12m'>('12m');
   const [topChartType, setTopChartType] = useState<'bar'|'pie'|'line'>('bar');
+  const [revenueChartType, setRevenueChartType] = useState<'area'|'bar'|'line'>('area');
 
   const handleLayoutChange = useCallback((_: Layout, allLayouts: any) => {
     setLayouts(allLayouts);
@@ -375,7 +374,7 @@ export function Dashboard({ darkMode, formulas = [], insumos = [], pedidos = [] 
                 </button>
               )}
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-1">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 flex-1">
               <KpiCard title="Receita Mensal" value={`R$ ${data.receita.toLocaleString('pt-BR',{minimumFractionDigits:2})}`} sub="Mês atual" icon={DollarSign} gradient="from-emerald-500 to-green-600" trend="up" />
               <KpiCard title="Fichas Técnicas" value={formulas.length.toString()} sub={`${formulas.length} cadastradas`} icon={Factory} gradient="from-blue-500 to-blue-600" trend="neutral" />
               <KpiCard title="Matérias-Primas" value={insumos.length.toString()} sub={`${insumos.length} registradas`} icon={Package} gradient="from-amber-500 to-orange-600" trend="neutral" />
@@ -389,27 +388,60 @@ export function Dashboard({ darkMode, formulas = [], insumos = [], pedidos = [] 
         return (
           <BlockCard>
             <BlockHeader icon={TrendingUp} title="Receita" color="text-emerald-500" isEditing={isEditingLayout} onRemove={rm}>
+              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 mr-2">
+                {([['area', AreaChartIcon],['bar', BarChart2],['line', LineChartIcon]] as any[]).map(([t,Icon])=>(
+                  <button key={t} onClick={()=>setRevenueChartType(t)} className={`p-1.5 rounded-md transition-colors ${revenueChartType===t?'bg-white dark:bg-gray-600 shadow-sm text-gray-800 dark:text-gray-100':'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>
+                    <Icon className="w-3.5 h-3.5"/>
+                  </button>
+                ))}
+              </div>
               <PeriodSelect value={revenuePeriod} onChange={setRevenuePeriod} />
             </BlockHeader>
             <div className="flex-1 min-h-0 px-2 py-3">
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <AreaChart data={data.revData} margin={{top:4,right:8,bottom:0,left:0}}>
-                  <defs>
-                    <linearGradient id="gRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#10B981" stopOpacity={0.25}/>
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode?'#1F2937':'#F3F4F6'} vertical={false}/>
-                  <XAxis dataKey="label" stroke={darkMode?'#6B7280':'#9CA3AF'} fontSize={11} tickMargin={8} axisLine={false} tickLine={false}/>
-                  <YAxis stroke={darkMode?'#6B7280':'#9CA3AF'} fontSize={11} tickFormatter={v=>`R$${v>=1000?(v/1000).toFixed(0)+'k':v}`} axisLine={false} tickLine={false}/>
-                  <Tooltip
-                    contentStyle={{backgroundColor:darkMode?'#111827':'#fff',border:'1px solid '+(darkMode?'#1F2937':'#E5E7EB'),borderRadius:'12px',boxShadow:'0 4px 20px rgba(0,0,0,0.15)',fontSize:'12px'}}
-                    formatter={(v:any)=>[`R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}`,'Receita']}
-                    labelStyle={{color:darkMode?'#9CA3AF':'#6B7280', fontWeight:600}}
-                  />
-                  <Area type="monotone" dataKey="receita" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#gRevenue)" dot={false} activeDot={{r:5,fill:'#10B981',strokeWidth:0}}/>
-                </AreaChart>
+                {revenueChartType === 'area' ? (
+                  <AreaChart data={data.revData} margin={{top:4,right:8,bottom:0,left:0}}>
+                    <defs>
+                      <linearGradient id="gRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor="#10B981" stopOpacity={0.25}/>
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode?'#1F2937':'#F3F4F6'} vertical={false}/>
+                    <XAxis dataKey="label" stroke={darkMode?'#6B7280':'#9CA3AF'} fontSize={11} tickMargin={8} axisLine={false} tickLine={false}/>
+                    <YAxis stroke={darkMode?'#6B7280':'#9CA3AF'} fontSize={11} tickFormatter={v=>`R$${v>=1000?(v/1000).toFixed(0)+'k':v}`} axisLine={false} tickLine={false}/>
+                    <Tooltip
+                      contentStyle={{backgroundColor:darkMode?'#111827':'#fff',border:'1px solid '+(darkMode?'#1F2937':'#E5E7EB'),borderRadius:'12px',boxShadow:'0 4px 20px rgba(0,0,0,0.15)',fontSize:'12px'}}
+                      formatter={(v:any)=>[`R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}`,'Receita']}
+                      labelStyle={{color:darkMode?'#9CA3AF':'#6B7280', fontWeight:600}}
+                    />
+                    <Area type="monotone" dataKey="receita" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#gRevenue)" dot={false} activeDot={{r:5,fill:'#10B981',strokeWidth:0}}/>
+                  </AreaChart>
+                ) : revenueChartType === 'bar' ? (
+                  <BarChart data={data.revData} margin={{top:4,right:8,bottom:0,left:0}}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode?'#1F2937':'#F3F4F6'} vertical={false}/>
+                    <XAxis dataKey="label" stroke={darkMode?'#6B7280':'#9CA3AF'} fontSize={11} tickMargin={8} axisLine={false} tickLine={false}/>
+                    <YAxis stroke={darkMode?'#6B7280':'#9CA3AF'} fontSize={11} tickFormatter={v=>`R$${v>=1000?(v/1000).toFixed(0)+'k':v}`} axisLine={false} tickLine={false}/>
+                    <Tooltip
+                      contentStyle={{backgroundColor:darkMode?'#111827':'#fff',border:'1px solid '+(darkMode?'#1F2937':'#E5E7EB'),borderRadius:'12px',boxShadow:'0 4px 20px rgba(0,0,0,0.15)',fontSize:'12px'}}
+                      formatter={(v:any)=>[`R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}`,'Receita']}
+                      labelStyle={{color:darkMode?'#9CA3AF':'#6B7280', fontWeight:600}}
+                    />
+                    <Bar dataKey="receita" name="Receita" fill="#10B981" radius={[6,6,0,0]}/>
+                  </BarChart>
+                ) : (
+                  <LineChart data={data.revData} margin={{top:4,right:8,bottom:0,left:0}}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode?'#1F2937':'#F3F4F6'} vertical={false}/>
+                    <XAxis dataKey="label" stroke={darkMode?'#6B7280':'#9CA3AF'} fontSize={11} tickMargin={8} axisLine={false} tickLine={false}/>
+                    <YAxis stroke={darkMode?'#6B7280':'#9CA3AF'} fontSize={11} tickFormatter={v=>`R$${v>=1000?(v/1000).toFixed(0)+'k':v}`} axisLine={false} tickLine={false}/>
+                    <Tooltip
+                      contentStyle={{backgroundColor:darkMode?'#111827':'#fff',border:'1px solid '+(darkMode?'#1F2937':'#E5E7EB'),borderRadius:'12px',boxShadow:'0 4px 20px rgba(0,0,0,0.15)',fontSize:'12px'}}
+                      formatter={(v:any)=>[`R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}`,'Receita']}
+                      labelStyle={{color:darkMode?'#9CA3AF':'#6B7280', fontWeight:600}}
+                    />
+                    <Line type="monotone" dataKey="receita" name="Receita" stroke="#10B981" strokeWidth={2.5} dot={{r:4,fill:'#10B981',strokeWidth:0}} activeDot={{r:6,fill:'#10B981',strokeWidth:0}}/>
+                  </LineChart>
+                )}
               </ResponsiveContainer>
             </div>
           </BlockCard>
@@ -444,7 +476,7 @@ export function Dashboard({ darkMode, formulas = [], insumos = [], pedidos = [] 
           <BlockCard>
             <BlockHeader icon={Star} title="Produtos Mais Vendidos" color="text-purple-500" isEditing={isEditingLayout} onRemove={rm}>
               <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-                {([['bar', BarChart2],['pie', PieChartIcon],['line', LineChartIcon]] as any[]).map(([t,Icon])=>(
+                {([['bar', BarChart3],['pie', PieChartIcon],['line', LineChartIcon]] as any[]).map(([t,Icon])=>(
                   <button key={t} onClick={()=>setTopChartType(t)} className={`p-1.5 rounded-md transition-colors ${topChartType===t?'bg-white dark:bg-gray-600 shadow-sm text-gray-800 dark:text-gray-100':'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>
                     <Icon className="w-3.5 h-3.5"/>
                   </button>

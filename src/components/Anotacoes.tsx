@@ -91,9 +91,16 @@ function ColorMenu({ icon: Icon, title, colors, onSelect }: { icon: any, title: 
   );
 }
 
-export function Anotacoes() {
+interface AnotacoesProps {
+  currentUser?: { id: string } | null;
+}
+
+export function Anotacoes({ currentUser }: AnotacoesProps) {
+  const userId = currentUser?.id || 'default';
+  const storageKey = `ohana_notes_${userId}`;
+
   const [notes, setNotes] = useState<Note[]>(() => {
-    const saved = localStorage.getItem('ohana_notes');
+    const saved = localStorage.getItem(storageKey);
     return saved ? JSON.parse(saved) : [];
   });
   
@@ -104,34 +111,47 @@ export function Anotacoes() {
   const [mobileView, setMobileView] = useState<'list' | 'editor'>('list');
 
   const editorRef = useRef<HTMLDivElement>(null);
+  const hydrationRef = useRef(false);
 
   useEffect(() => {
-    dataService.anotacoes.getAll().then(data => {
-      if (data.length > 0) {
-        const mapped = data.map((n: any) => ({
-          id: n.id,
-          title: n.titulo || n.title || '',
-          content: n.conteudo || n.content || '',
-          updatedAt: n.updatedAt || n.updated_at || new Date().toISOString(),
-        }));
+    hydrationRef.current = true;
+    const saved = localStorage.getItem(storageKey);
+    const localNotes: Note[] = saved ? JSON.parse(saved) : [];
+    setNotes(localNotes);
+    setActiveNoteId(localNotes.length > 0 ? localNotes[0].id : null);
+
+    dataService.anotacoes.getAll(userId).then(data => {
+      const mapped = data.map((n: any) => ({
+        id: n.id,
+        title: n.titulo || n.title || '',
+        content: n.conteudo || n.content || '',
+        updatedAt: n.updatedAt || n.updated_at || new Date().toISOString(),
+      }));
+      if (mapped.length > 0) {
         setNotes(mapped);
-        if (!activeNoteId && mapped.length > 0) {
-          setActiveNoteId(mapped[0].id);
-        }
+        setActiveNoteId(mapped[0].id);
+      } else if (localNotes.length === 0) {
+        setNotes([]);
+        setActiveNoteId(null);
       }
+      hydrationRef.current = false;
+    }).catch(() => {
+      hydrationRef.current = false;
     });
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
-    localStorage.setItem('ohana_notes', JSON.stringify(notes));
+    if (hydrationRef.current) return;
+    localStorage.setItem(storageKey, JSON.stringify(notes));
     const mapped = notes.map(n => ({
       id: n.id,
       titulo: n.title,
       conteudo: n.content,
       updatedAt: n.updatedAt,
+      userId,
     }));
-    dataService.anotacoes.save(mapped).catch(err => console.error('Erro ao salvar anotações:', err));
-  }, [notes]);
+    dataService.anotacoes.save(mapped, userId).catch(err => console.error('Erro ao salvar anotações:', err));
+  }, [notes, storageKey, userId]);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
   const isUpdatingRef = useRef(false);
@@ -158,7 +178,7 @@ export function Anotacoes() {
   };
 
   const handleDeleteNote = (id: string) => {
-    dataService.anotacoes.delete(id).catch(err => console.error('Erro ao deletar nota:', err));
+    dataService.anotacoes.delete(id, userId).catch(err => console.error('Erro ao deletar nota:', err));
     const newNotes = notes.filter(n => n.id !== id);
     setNotes(newNotes);
     if (activeNoteId === id) {

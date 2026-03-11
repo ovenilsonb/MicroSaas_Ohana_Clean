@@ -1034,11 +1034,16 @@ class DataServiceImpl {
 
   // ==================== ANOTAÇÕES ====================
   anotacoes = {
-    getAll: async (): Promise<any[]> => {
+    getAll: async (userId?: string): Promise<any[]> => {
+      const storageKey = userId ? `ohana_notes_${userId}` : 'ohana_notes';
       const supabase = getSupabase();
       if (supabase && await this.isConnected()) {
         try {
-          const { data, error } = await supabase.from('anotacoes').select('*').order('created_at', { ascending: false });
+          let query = supabase.from('anotacoes').select('*').order('created_at', { ascending: false });
+          if (userId) {
+            query = query.eq('user_id', userId);
+          }
+          const { data, error } = await query;
           if (error) throw error;
           if (data && data.length > 0) {
             const result = data.map((n: any) => ({
@@ -1047,10 +1052,11 @@ class DataServiceImpl {
               conteudo: n.conteudo || '',
               cor: n.cor || '#fbbf24',
               fixada: n.fixada || false,
+              userId: n.user_id || userId,
               createdAt: n.created_at,
               updatedAt: n.updated_at,
             }));
-            localStorage.setItem('ohana_notes', JSON.stringify(result));
+            localStorage.setItem(storageKey, JSON.stringify(result));
             return result;
           }
           return [];
@@ -1058,23 +1064,27 @@ class DataServiceImpl {
           console.error('Erro ao buscar anotações:', error);
         }
       }
-      const stored = localStorage.getItem('ohana_notes');
+      const stored = localStorage.getItem(storageKey);
       return stored ? JSON.parse(stored) : [];
     },
 
-    save: async (notes: any[]): Promise<{ success: boolean; error?: string }> => {
-      localStorage.setItem('ohana_notes', JSON.stringify(notes));
+    save: async (notes: any[], userId?: string): Promise<{ success: boolean; error?: string }> => {
+      const storageKey = userId ? `ohana_notes_${userId}` : 'ohana_notes';
+      localStorage.setItem(storageKey, JSON.stringify(notes));
       const supabase = getSupabase();
       if (supabase && await this.isConnected()) {
         try {
           for (const n of notes) {
-            const dbData = {
+            const dbData: Record<string, any> = {
               id: n.id,
               titulo: n.titulo || '',
               conteudo: n.conteudo || '',
               cor: n.cor || '#fbbf24',
               fixada: n.fixada || false,
             };
+            if (userId) {
+              dbData.user_id = userId;
+            }
             const { error } = await supabase.from('anotacoes').upsert(dbData, { onConflict: 'id' });
             if (error) throw error;
           }
@@ -1087,14 +1097,19 @@ class DataServiceImpl {
       return { success: true };
     },
 
-    delete: async (id: string): Promise<void> => {
+    delete: async (id: string, userId?: string): Promise<void> => {
       const supabase = getSupabase();
       if (supabase && await this.isConnected()) {
-        await supabase.from('anotacoes').delete().eq('id', id);
+        let query = supabase.from('anotacoes').delete().eq('id', id);
+        if (userId) {
+          query = query.eq('user_id', userId);
+        }
+        await query;
       }
-      let notes = await this.anotacoes.getAll();
+      let notes = await this.anotacoes.getAll(userId);
       notes = notes.filter(n => n.id !== id);
-      localStorage.setItem('ohana_notes', JSON.stringify(notes));
+      const storageKey = userId ? `ohana_notes_${userId}` : 'ohana_notes';
+      localStorage.setItem(storageKey, JSON.stringify(notes));
     },
   };
 

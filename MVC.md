@@ -58,3 +58,17 @@ Se o usuário tenta cadastrar um novo Insumo, o caminho flui assim:
 3. **(Model)** O cliente do backend em `src/lib/supabase` pega a estrutura empacotada mapeada por `src/types/`, a envia para o banco de dados Supabase na nuvem, que valida a RLS. O banco grava e devolve sucesso.
 4. **(Controller)** Recebe a resposta de sucesso e atualiza seu estado interno de tela (Fecha o Loading).
 5. **(View)** Reage à atualização do estado do Controller para mostrar um modal verde com a mensagem "Insumo salvo com sucesso".
+
+---
+
+## Changelog
+
+### v1.43.0
+- Fixed Anotações per-user isolation - notes now properly filtered by userId
+- Updated version to 1.43.0
+- Improved Dashboard KPI cards sizing and layout
+- Added chart type selector to Revenue chart (Area, Bar, Line options)
+- Fixed bar chart icon on "Produtos Mais Vendidos" chart
+
+### v1.42.0
+- Previous stable version
