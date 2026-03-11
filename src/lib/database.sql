@@ -53,6 +53,14 @@ CREATE TABLE public.insumos (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.insumos 
+ADD COLUMN IF NOT EXISTS peso_especifico TEXT,
+ADD COLUMN IF NOT EXISTS ph TEXT,
+ADD COLUMN IF NOT EXISTS temperatura TEXT,
+ADD COLUMN IF NOT EXISTS viscosidade TEXT,
+ADD COLUMN IF NOT EXISTS solubilidade TEXT,
+ADD COLUMN IF NOT EXISTS risco TEXT;
+
 CREATE TABLE public.insumo_variantes (
   id TEXT PRIMARY KEY,
   insumo_id TEXT REFERENCES public.insumos(id) ON DELETE CASCADE,
@@ -217,12 +225,33 @@ CREATE TABLE public.precificacao (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE public.insumo_movimentacoes (
+  id TEXT PRIMARY KEY,
+  insumo_id TEXT REFERENCES public.insumos(id) ON DELETE CASCADE,
+  tipo TEXT NOT NULL DEFAULT 'entrada',
+  data TEXT NOT NULL,
+  quantidade NUMERIC NOT NULL DEFAULT 0,
+  saldo_atual NUMERIC NOT NULL DEFAULT 0,
+  fornecedor TEXT,
+  lote TEXT,
+  validade TEXT,
+  documento TEXT,
+  destino TEXT,
+  pedido TEXT,
+  responsavel TEXT,
+  motivo TEXT,
+  observacoes TEXT,
+  usuario TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE public.anotacoes (
   id TEXT PRIMARY KEY,
   titulo TEXT NOT NULL DEFAULT '',
   conteudo TEXT NOT NULL DEFAULT '',
   cor TEXT DEFAULT '#fbbf24',
   fixada BOOLEAN DEFAULT false,
+  user_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -271,6 +300,7 @@ ALTER TABLE public.produtos_estoque ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.movimentacoes_estoque ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.precificacao ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.anotacoes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.insumo_movimentacoes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.access_groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 
@@ -283,7 +313,7 @@ BEGIN
     FROM information_schema.tables
     WHERE table_schema = 'public'
     AND table_name IN (
-      'insumos', 'insumo_variantes', 'grupos', 'formulas', 'formula_insumos',
+      'insumos', 'insumo_variantes', 'insumo_movimentacoes', 'grupos', 'formulas', 'formula_insumos',
       'formula_historico', 'clientes', 'listas_preco', 'pedidos',
       'ordens_producao', 'produtos_estoque', 'movimentacoes_estoque',
       'precificacao', 'anotacoes', 'access_groups', 'user_profiles'
@@ -310,6 +340,8 @@ CREATE INDEX idx_pedidos_cliente ON public.pedidos(cliente_id);
 CREATE INDEX idx_ordens_pedido ON public.ordens_producao(pedido_id);
 CREATE INDEX idx_estoque_formula ON public.produtos_estoque(formula_id);
 CREATE INDEX idx_precificacao_formula ON public.precificacao(formula_id);
+CREATE INDEX idx_insumo_movimentacoes_insumo ON public.insumo_movimentacoes(insumo_id);
+CREATE INDEX idx_anotacoes_user_id ON public.anotacoes(user_id);
 
 -- =====================================================
 -- 6. GRUPO ADMINISTRADOR PADRÃO

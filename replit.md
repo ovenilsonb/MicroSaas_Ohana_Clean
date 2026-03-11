@@ -38,7 +38,7 @@ src/
 ## Supabase Integration
 
 - **Credentials**: Stored as env vars `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
-- **Tables (16+)**: insumos, insumo_variantes, formulas, formula_insumos, formula_historico, grupos, clientes, pedidos, pedido_itens, ordens_producao, producao_insumos_usados, produtos_estoque, movimentacoes_estoque, listas_preco, precificacao, anotacoes, usuarios, grupos_acesso
+- **Tables (17)**: insumos, insumo_variantes, insumo_movimentacoes, formulas, formula_insumos, formula_historico, grupos, clientes, pedidos, ordens_producao, produtos_estoque, movimentacoes_estoque, listas_preco, precificacao, anotacoes (with user_id), access_groups, user_profiles
 - **DB columns**: snake_case; React state: camelCase; dataService.ts has explicit mappers for each entity
 - **Data loading order**: grupos must be synced to Supabase BEFORE formulas (FK constraint `formulas_grupo_id_fkey`)
 - **Save guard**: `dataLoadedRef` prevents save effects from firing on initial mount, avoiding premature Supabase writes before dependent data (grupos) is loaded

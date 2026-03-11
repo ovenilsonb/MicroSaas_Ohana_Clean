@@ -45,6 +45,12 @@ class DataServiceImpl {
               .from('insumo_variantes')
               .select('*');
 
+            let movimentacoes: any[] = [];
+            try {
+              const { data: movData } = await supabase.from('insumo_movimentacoes').select('*');
+              movimentacoes = movData || [];
+            } catch (_) {}
+
             const result = data.map((insumo: any) => ({
               id: insumo.id,
               nome: insumo.nome,
@@ -60,12 +66,36 @@ class DataServiceImpl {
               imagem: insumo.imagem,
               foto: insumo.foto,
               validadeIndeterminada: insumo.validade_indeterminada,
+              pesoEspecifico: insumo.peso_especifico || undefined,
+              ph: insumo.ph || undefined,
+              temperatura: insumo.temperatura || undefined,
+              viscosidade: insumo.viscosidade || undefined,
+              solubilidade: insumo.solubilidade || undefined,
+              risco: insumo.risco || undefined,
               variantes: variantes?.filter((v: any) => v.insumo_id === insumo.id).map((v: any) => ({
                 id: v.id,
                 nome: v.nome,
                 codigo: v.codigo,
                 valorUnitario: Number(v.valor_unitario) || 0,
-              })) || []
+              })) || [],
+              movimentacoes: movimentacoes.filter((m: any) => m.insumo_id === insumo.id).map((m: any) => ({
+                id: m.id,
+                insumoId: m.insumo_id,
+                tipo: m.tipo,
+                data: m.data,
+                quantidade: Number(m.quantidade) || 0,
+                saldoAtual: Number(m.saldo_atual) || 0,
+                fornecedor: m.fornecedor,
+                lote: m.lote,
+                validade: m.validade,
+                documento: m.documento,
+                destino: m.destino,
+                pedido: m.pedido,
+                responsavel: m.responsavel,
+                motivo: m.motivo,
+                observacoes: m.observacoes,
+                usuario: m.usuario,
+              }))
             }));
             localStorage.setItem('ohana_insumos', JSON.stringify(result));
             return result;
@@ -103,12 +133,51 @@ class DataServiceImpl {
               imagem: rest.imagem || null,
               foto: (rest as any).foto || null,
               validade_indeterminada: rest.validadeIndeterminada || false,
+              peso_especifico: rest.pesoEspecifico || null,
+              ph: rest.ph || null,
+              temperatura: rest.temperatura || null,
+              viscosidade: rest.viscosidade || null,
+              solubilidade: rest.solubilidade || null,
+              risco: rest.risco || null,
             };
 
-            const { error } = await supabase
+            let { error } = await supabase
               .from('insumos')
               .upsert(dbData, { onConflict: 'id' });
+            if (error && error.code === 'PGRST204') {
+              const { peso_especifico, ph, temperatura, viscosidade, solubilidade, risco, ...baseData } = dbData;
+              const retry = await supabase.from('insumos').upsert(baseData, { onConflict: 'id' });
+              error = retry.error;
+            }
             if (error) throw error;
+
+            const movimentacoes = insumo.movimentacoes || [];
+            if (movimentacoes.length > 0) {
+              try {
+                await supabase.from('insumo_movimentacoes').delete().eq('insumo_id', insumo.id);
+                const movData = movimentacoes.map((m: any) => ({
+                  id: m.id,
+                  insumo_id: insumo.id,
+                  tipo: m.tipo,
+                  data: m.data,
+                  quantidade: m.quantidade || 0,
+                  saldo_atual: m.saldoAtual || 0,
+                  fornecedor: m.fornecedor || null,
+                  lote: m.lote || null,
+                  validade: m.validade || null,
+                  documento: m.documento || null,
+                  destino: m.destino || null,
+                  pedido: m.pedido || null,
+                  responsavel: m.responsavel || null,
+                  motivo: m.motivo || null,
+                  observacoes: m.observacoes || null,
+                  usuario: m.usuario || null,
+                }));
+                await supabase.from('insumo_movimentacoes').insert(movData);
+              } catch (movErr) {
+                console.error('Erro insumo_movimentacoes:', movErr);
+              }
+            }
 
             if (variantes && variantes.length > 0) {
               const varData = variantes.map((v: InsumoVariante) => ({
@@ -224,6 +293,12 @@ class DataServiceImpl {
           if (error) throw error;
 
           if (data && data.length > 0) {
+            let historicoData: any[] = [];
+            try {
+              const { data: histData } = await supabase.from('formula_historico').select('*');
+              historicoData = histData || [];
+            } catch (_) {}
+
             const result = data.map((f: any) => ({
               id: f.id,
               nome: f.nome,
@@ -252,7 +327,12 @@ class DataServiceImpl {
                 valorUnitario: Number(i.valor_unitario) || 0,
                 ordem: i.ordem || 0
               })) || [],
-              historico: [],
+              historico: historicoData.filter((h: any) => h.formula_id === f.id).map((h: any) => ({
+                id: h.id,
+                data: h.data,
+                acao: h.acao,
+                detalhes: h.detalhes,
+              })),
             }));
             localStorage.setItem('ohana_formulas', JSON.stringify(result));
             return result;
@@ -314,6 +394,22 @@ class DataServiceImpl {
               const { error: insErr } = await supabase.from('formula_insumos').insert(insData);
               if (insErr) console.error('Erro formula_insumos:', insErr);
             }
+
+            if (historico && historico.length > 0) {
+              try {
+                await supabase.from('formula_historico').delete().eq('formula_id', formula.id);
+                const histData = historico.map((h: any) => ({
+                  id: h.id,
+                  formula_id: formula.id,
+                  data: h.data,
+                  acao: h.acao,
+                  detalhes: h.detalhes,
+                }));
+                await supabase.from('formula_historico').insert(histData);
+              } catch (histErr) {
+                console.error('Erro formula_historico:', histErr);
+              }
+            }
           }
           return { success: true };
         } catch (error) {
@@ -328,6 +424,7 @@ class DataServiceImpl {
       const supabase = getSupabase();
       if (supabase && await this.isConnected()) {
         try {
+          await supabase.from('formula_historico').delete().neq('id', '');
           await supabase.from('formula_insumos').delete().neq('id', '');
           await supabase.from('formulas').delete().neq('id', '');
 
@@ -365,6 +462,17 @@ class DataServiceImpl {
                 ordem: i.ordem || idx
               }));
               await supabase.from('formula_insumos').insert(insData);
+            }
+
+            if (historico && historico.length > 0) {
+              const histData = historico.map((h: any) => ({
+                id: h.id,
+                formula_id: formula.id,
+                data: h.data,
+                acao: h.acao,
+                detalhes: h.detalhes,
+              }));
+              await supabase.from('formula_historico').insert(histData);
             }
           }
           return { success: true };
