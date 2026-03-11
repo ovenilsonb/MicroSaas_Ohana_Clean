@@ -673,6 +673,8 @@ export function App() {
           canAdd={checkLimit('formulas', formulas.length) && hasPermission(currentUser, groups, 'formulas', 'create')} 
           canEdit={hasPermission(currentUser, groups, 'formulas', 'edit')}
           canDelete={hasPermission(currentUser, groups, 'formulas', 'delete')}
+          onNavigateTo={(module: string) => setActiveModule(module)}
+          canNavigatePrecificacao={hasPermission(currentUser, groups, 'precificacao', 'view')}
         />;
       case 'precificacao':
         return (
@@ -756,6 +758,7 @@ export function App() {
             reportTemplates={reportTemplates}
             reportAssignments={reportAssignments}
             onNavigateTo={(module: string) => setActiveModule(module)}
+            canNavigatePrecificacao={hasPermission(currentUser, groups, 'precificacao', 'view')}
           />
         );
       case 'config':

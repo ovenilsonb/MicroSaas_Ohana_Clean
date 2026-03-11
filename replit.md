@@ -56,6 +56,14 @@ src/
 - **Rendering**: `ReportTemplate.tsx` renders custom elements using percentage-based positioning (normalized from 794px editor canvas) for responsive scaling across screen and print
 - **Templates**: Saved to localStorage, assignable to specific report types (Fórmula, Proporção, Precificação, Vendas)
 
+## Version 1.46.0 Changes
+
+- **Precificação button in Formulas**: Added DollarSign button to each formula card (grid and list views) that navigates to the Precificação tab. Gated by `canNavigatePrecificacao` permission check.
+- **Permission-gated navigation**: All `onNavigateTo('precificacao')` calls in Formulas and Relatorios now check `hasPermission(currentUser, groups, 'precificacao', 'view')` before showing buttons.
+- **unitVolume persistence**: `dataService.precificacao` now saves/loads `unit_volume` column to/from Supabase, replacing the old `unitType` approach.
+- **Migration SQL updated**: `migration_v1.44.sql` now includes: `unit_volume` column on `precificacao` table, `listas_preco` table creation, `insumo_variantes` table creation (with `codigo` column), and RLS policies for new tables.
+- **Decimal formatting**: Quantities use 3 decimal places (`0,000`), values/costs use 2 decimal places (`0,00`), all in pt-BR locale.
+
 ## Version 1.45.0 Changes
 
 - **Embalagem auto-matching in ProporcaoTab**: When selecting a volume (e.g., 2L), non-chemical insumos with variants are automatically matched to the correct variant price. Helper functions `extractVolumeFromName()` and `findMatchingVariant()` parse variant names (500ml, 1L, 2L, 5L) to match the selected embalagemVolume. Matched variant name and price shown in checkbox area and table.

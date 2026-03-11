@@ -17,7 +17,8 @@ import {
   ChevronDown,
   Save,
   FolderTree,
-  Calculator
+  Calculator,
+  DollarSign
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Formula, FormulaInsumo, FormulaHistorico, Grupo, Insumo } from '../types';
@@ -39,13 +40,15 @@ interface FormulasProps {
   canAdd?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
+  onNavigateTo?: (module: string) => void;
+  canNavigatePrecificacao?: boolean;
 }
 
 type ViewMode = 'list' | 'grid';
 type SortMode = 'az' | 'za' | 'asc' | 'desc';
 type TabType = 'formulas' | 'grupos' | 'proporcao';
 
-export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdit = true, canDelete = true }: FormulasProps) {
+export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdit = true, canDelete = true, onNavigateTo, canNavigatePrecificacao = false }: FormulasProps) {
   const [grupos, setGrupos] = useState<Grupo[]>(() => {
     const saved = localStorage.getItem('ohana_grupos');
     return saved ? JSON.parse(saved) : initialGrupos;
@@ -618,6 +621,16 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
                         </button>
                       )}
                       
+                      {onNavigateTo && canNavigatePrecificacao && (
+                        <button
+                          onClick={() => onNavigateTo('precificacao')}
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          title="Precificação"
+                        >
+                          <DollarSign className="w-4 h-4 text-emerald-500" />
+                        </button>
+                      )}
+
                       {canDelete && (
                         <button
                           onClick={() => handleDelete(formula.id)}
@@ -704,6 +717,15 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
                             >
                               <Copy className="w-4 h-4 text-purple-500" />
                             </button>
+                            {onNavigateTo && canNavigatePrecificacao && (
+                              <button
+                                onClick={() => onNavigateTo('precificacao')}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                title="Precificação"
+                              >
+                                <DollarSign className="w-4 h-4 text-emerald-500" />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDelete(formula.id)}
                               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"

@@ -1091,6 +1091,7 @@ class DataServiceImpl {
               precoAtacado: Number(p.preco_atacado) || 0,
               precoFardo: Number(p.preco_fardo) || 0,
               quantidadeFardo: Number(p.quantidade_fardo) || 0,
+              unitVolume: Number(p.unit_volume) || 2,
               updatedAt: p.updated_at,
             }));
             localStorage.setItem('precificacoes', JSON.stringify(
@@ -1126,6 +1127,7 @@ class DataServiceImpl {
               preco_atacado: p.precoAtacado || 0,
               preco_fardo: p.precoFardo || 0,
               quantidade_fardo: p.quantidadeFardo || 0,
+              unit_volume: p.unitVolume || 2,
             };
             const { error } = await supabase.from('precificacao').upsert(dbData, { onConflict: 'id' });
             if (error) throw error;

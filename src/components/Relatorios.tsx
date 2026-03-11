@@ -33,9 +33,10 @@ interface RelatoriosProps {
   reportTemplates?: ReportTemplateConfig[];
   reportAssignments?: ReportAssignments;
   onNavigateTo?: (module: string) => void;
+  canNavigatePrecificacao?: boolean;
 }
 
-export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes, companyName, companyLogo, reportTemplates = [], reportAssignments, onNavigateTo }: RelatoriosProps) {
+export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes, companyName, companyLogo, reportTemplates = [], reportAssignments, onNavigateTo, canNavigatePrecificacao = false }: RelatoriosProps) {
   const getTemplateConfig = (type: keyof ReportAssignments) => {
     if (!reportAssignments || !reportAssignments[type]) return undefined;
     return reportTemplates.find(t => t.id === reportAssignments[type]);
@@ -209,7 +210,7 @@ export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes
                 <DollarSign className="w-5 h-5 text-emerald-500" />
                 Relatórios de Precificação Disponíveis
               </h3>
-              {onNavigateTo && (
+              {onNavigateTo && canNavigatePrecificacao && (
                 <button
                   onClick={() => onNavigateTo('precificacao')}
                   className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-[10px] font-bold uppercase tracking-wider"
@@ -246,7 +247,7 @@ export function Relatorios({ formulas, insumos, pedidos, clientes, precificacoes
               {formulas.filter(f => precificacoes[f.id]).length === 0 && (
                 <div className="p-8 text-center">
                   <p className="text-gray-500 text-sm italic mb-3">Nenhuma precificação encontrada.</p>
-                  {onNavigateTo && (
+                  {onNavigateTo && canNavigatePrecificacao && (
                     <button
                       onClick={() => onNavigateTo('precificacao')}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs font-bold"
