@@ -69,7 +69,7 @@ export const FormulaReport: React.FC<FormulaReportProps & { companyName?: string
                       <p className="font-bold text-slate-800">{insumo.nome}</p>
                       {insumo.quimico && <span className="text-[8px] font-bold text-blue-500 uppercase tracking-tighter">Componente Químico</span>}
                     </td>
-                    <td className="px-4 py-3 text-center font-mono">{insumo.quantidade.toLocaleString('pt-BR', { minimumFractionDigits: 3 })}</td>
+                    <td className="px-4 py-3 text-center font-mono">{insumo.quantidade.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="px-4 py-3 text-center text-slate-500">{insumo.unidade.toUpperCase()}</td>
                     <td className="px-4 py-3 text-center text-slate-500 font-mono">
                       {insumo.quimico ? `${percOriginal.toFixed(2)}%` : '-'}

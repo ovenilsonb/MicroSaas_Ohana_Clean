@@ -333,9 +333,8 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
       if (parts.length > 2) {
         cleanValue = parts[0] + ',' + parts.slice(1).join('');
       }
-      // Limita a 3 casas decimais
-      if (parts.length === 2 && parts[1].length > 3) {
-        cleanValue = parts[0] + ',' + parts[1].substring(0, 3);
+      if (parts.length === 2 && parts[1].length > 2) {
+        cleanValue = parts[0] + ',' + parts[1].substring(0, 2);
       }
     }
     
@@ -354,7 +353,7 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
     }));
     
     // Formata o valor após blur
-    const formatted = quimico ? quantidade.toFixed(3).replace('.', ',') : Math.round(quantidade).toString();
+    const formatted = quimico ? quantidade.toFixed(2).replace('.', ',') : Math.round(quantidade).toString();
     setQuantidadeInputs(prev => ({ ...prev, [id]: formatted }));
   };
 
@@ -362,7 +361,7 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
     if (quantidadeInputs[insumo.id] !== undefined) {
       return quantidadeInputs[insumo.id];
     }
-    return insumo.quimico ? insumo.quantidade.toFixed(3).replace('.', ',') : insumo.quantidade.toString();
+    return insumo.quimico ? insumo.quantidade.toFixed(2).replace('.', ',') : insumo.quantidade.toString();
   };
 
   // Grupos handlers
@@ -1006,7 +1005,7 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
                               // Inicializa o input com o valor atual ao focar, sem zerar
                               if (quantidadeInputs[insumo.id] === undefined) {
                                 const formatted = insumo.quimico 
-                                  ? insumo.quantidade.toFixed(3).replace('.', ',') 
+                                  ? insumo.quantidade.toFixed(2).replace('.', ',') 
                                   : insumo.quantidade.toString();
                                 setQuantidadeInputs(prev => ({ ...prev, [insumo.id]: formatted }));
                               }
@@ -1170,7 +1169,7 @@ export function Formulas({ formulas, setFormulas, insumos, canAdd = true, canEdi
                       <span className="text-gray-900 dark:text-white">{insumo.nome}</span>
                     </div>
                     <div className="flex items-center gap-4 text-sm">
-                      <span className="text-gray-500">{insumo.quantidade.toFixed(3)} {insumo.unidade}</span>
+                      <span className="text-gray-500">{insumo.quantidade.toFixed(2)} {insumo.unidade}</span>
                       <span className="font-medium text-gray-900 dark:text-white">
                         R$ {(insumo.quantidade * insumo.valorUnitario).toFixed(2)}
                       </span>
@@ -1340,14 +1339,27 @@ function ProporcaoTab({
 
   const selectedFormula = formulas.find(f => f.id === selectedFormulaId);
 
-  const nonChemicals = useMemo(() => 
-    (selectedFormula?.insumos || []).filter(i => !i.quimico), 
-    [selectedFormula]
-  );
   const chemicals = useMemo(() => 
     (selectedFormula?.insumos || []).filter(i => i.quimico), 
     [selectedFormula]
   );
+
+  const nonChemicals = useMemo(() => {
+    const formulaNonChem = (selectedFormula?.insumos || []).filter(i => !i.quimico);
+    const formulaInsumoIds = new Set(formulaNonChem.map(i => i.insumoId));
+    const catalogNonChem = insumosData
+      .filter(ins => !ins.quimico && !formulaInsumoIds.has(ins.id))
+      .map(ins => ({
+        id: `auto_${ins.id}`,
+        insumoId: ins.id,
+        nome: ins.nome,
+        unidade: ins.unidade,
+        quantidade: 1,
+        valorUnitario: ins.valorUnitario,
+        quimico: false,
+      } as FormulaInsumo));
+    return [...formulaNonChem, ...catalogNonChem];
+  }, [selectedFormula, insumosData]);
 
   const getEffectivePrice = useMemo(() => {
     const cache: Record<string, { price: number; variantName: string | null }> = {};
@@ -1375,11 +1387,6 @@ function ProporcaoTab({
   useEffect(() => {
     if (selectedFormula) {
       setQuantidade(10);
-      const newSelected: Record<string, boolean> = {};
-      (selectedFormula.insumos || []).filter(i => !i.quimico).forEach(i => {
-        newSelected[i.id] = true;
-      });
-      setSelectedNonChemicals(newSelected);
       setEmbalagemVolume(1);
       setEmbalagemVolumeInput('1');
     }
@@ -1387,6 +1394,16 @@ function ProporcaoTab({
     setPropInputs({});
     setHasChanges(false);
   }, [selectedFormulaId]);
+
+  useEffect(() => {
+    if (selectedFormula && nonChemicals.length > 0) {
+      const newSelected: Record<string, boolean> = {};
+      nonChemicals.forEach(i => {
+        newSelected[i.id] = true;
+      });
+      setSelectedNonChemicals(newSelected);
+    }
+  }, [selectedFormulaId, nonChemicals.length]);
 
   useEffect(() => {
     setPropInputs({});
@@ -1431,8 +1448,8 @@ function ProporcaoTab({
       if (parts.length > 2) {
         cleanValue = parts[0] + ',' + parts.slice(1).join('');
       }
-      if (parts.length === 2 && parts[1].length > 3) {
-        cleanValue = parts[0] + ',' + parts[1].substring(0, 3);
+      if (parts.length === 2 && parts[1].length > 2) {
+        cleanValue = parts[0] + ',' + parts[1].substring(0, 2);
       }
     }
     setPropInputs(prev => ({ ...prev, [insumoId]: cleanValue }));
@@ -1442,7 +1459,7 @@ function ProporcaoTab({
     const qtd = getQuantidadeAjustada(insumo);
     setPropOriginalValues(prev => ({ ...prev, [insumoId]: qtd }));
     if (propInputs[insumoId] === undefined) {
-      const formatted = insumo.quimico ? qtd.toFixed(3).replace('.', ',') : Math.round(qtd).toString();
+      const formatted = insumo.quimico ? qtd.toFixed(2).replace('.', ',') : Math.round(qtd).toString();
       setPropInputs(prev => ({ ...prev, [insumoId]: formatted }));
     }
   };
@@ -1451,12 +1468,14 @@ function ProporcaoTab({
     const value = propInputs[insumoId] || '0';
     const novaQuantidade = parseFloat(value.replace(',', '.')) || 0;
     const quantidadeOriginal = propOriginalValues[insumoId];
-    const mudou = quantidadeOriginal !== undefined && Math.abs(novaQuantidade - quantidadeOriginal) > 0.0001;
+    const mudou = quantidadeOriginal !== undefined && Math.abs(novaQuantidade - quantidadeOriginal) > 0.001;
     if (mudou) {
       setInsumosAjustados(prev => ({ ...prev, [insumoId]: novaQuantidade }));
-      setHasChanges(true);
+      if (!insumoId.startsWith('auto_')) {
+        setHasChanges(true);
+      }
     }
-    const formatted = quimico ? novaQuantidade.toFixed(3).replace('.', ',') : Math.round(novaQuantidade).toString();
+    const formatted = quimico ? novaQuantidade.toFixed(2).replace('.', ',') : Math.round(novaQuantidade).toString();
     setPropInputs(prev => ({ ...prev, [insumoId]: formatted }));
   };
 
@@ -1465,7 +1484,7 @@ function ProporcaoTab({
       return propInputs[insumo.id];
     }
     const qtd = getQuantidadeAjustada(insumo);
-    return insumo.quimico ? qtd.toFixed(3).replace('.', ',') : Math.round(qtd).toString();
+    return insumo.quimico ? qtd.toFixed(2).replace('.', ',') : Math.round(qtd).toString();
   };
 
   const handleSaveToOriginal = () => {
@@ -1484,7 +1503,7 @@ function ProporcaoTab({
     });
     const alteracoes = insumosAtualizados
       .filter(i => Math.abs(i._qtdAnterior - i._qtdNova) > 0.0001)
-      .map(i => `${i.nome}: ${i._qtdAnterior.toFixed(3)} → ${i._qtdNova.toFixed(3)}`);
+      .map(i => `${i.nome}: ${i._qtdAnterior.toFixed(2)} → ${i._qtdNova.toFixed(2)}`);
     if (alteracoes.length === 0) { alert('Nenhuma alteração detectada.'); return; }
     const novoHistorico: FormulaHistorico = {
       id: Date.now().toString(), data: dataStr, acao: 'Ajuste de Proporção',
@@ -1544,7 +1563,7 @@ function ProporcaoTab({
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Rendimento da fórmula: <span className="font-semibold text-blue-600 dark:text-blue-400">{selectedFormula.rendimento} {selectedFormula.unidade}</span>
-              {' · '}{chemicals.length} químico(s) · {nonChemicals.length} não-químico(s)
+              {' · '}{chemicals.length} químico(s) · {nonChemicals.length} material(is)
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1736,7 +1755,7 @@ function ProporcaoTab({
                           {wasEdited && <span className="px-1.5 py-0.5 bg-amber-500 text-white text-xs rounded">editado</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{insumo.quantidade.toFixed(3)} {insumo.unidade}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{insumo.quantidade.toFixed(2)} {insumo.unidade}</td>
                       <td className="px-4 py-3">
                         <input type="text" value={getPropInputValue(insumo)} onFocus={() => handlePropInputFocus(insumo.id, insumo)} onChange={(e) => handlePropInputChange(insumo.id, e.target.value, true)} onBlur={() => handlePropInputBlur(insumo.id, true)} className="w-24 px-2 py-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-900 dark:text-white font-medium" />
                         <span className="ml-1 text-xs text-gray-500">{insumo.unidade}</span>
