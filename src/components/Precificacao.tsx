@@ -617,6 +617,15 @@ export function Precificacao({
 
 
 
+  const [showNewPricingPicker, setShowNewPricingPicker] = useState(false);
+  const [newPricingSearch, setNewPricingSearch] = useState('');
+
+  const unpricedFormulas = formulas.filter(f => !precificacoes[f.id]);
+  const filteredUnpriced = unpricedFormulas.filter(f =>
+    f.nome.toLowerCase().includes(newPricingSearch.toLowerCase()) ||
+    f.codigo.toLowerCase().includes(newPricingSearch.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
       {/* Header com Tabs */}
@@ -624,6 +633,74 @@ export function Precificacao({
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Precificação</h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Defina preços e crie listas de preços personalizadas</p>
+        </div>
+        <div className="relative">
+          <button
+            onClick={() => setShowNewPricingPicker(!showNewPricingPicker)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white rounded-xl transition-all shadow-lg shadow-emerald-500/25 font-bold text-sm"
+          >
+            <Plus size={18} />
+            Nova Precificação
+          </button>
+          {showNewPricingPicker && (
+            <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowNewPricingPicker(false)} />
+            <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl z-50 overflow-hidden">
+              <div className="p-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar fórmula..."
+                    value={newPricingSearch}
+                    onChange={(e) => setNewPricingSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-900 dark:text-white placeholder-gray-400"
+                    autoFocus
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1.5 uppercase font-bold tracking-wider">
+                  {unpricedFormulas.length} fórmula{unpricedFormulas.length !== 1 ? 's' : ''} sem precificação
+                </p>
+              </div>
+              <div className="max-h-60 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-700/50">
+                {filteredUnpriced.length > 0 ? filteredUnpriced.map(formula => {
+                  const grupo = getGrupo(formula.grupoId);
+                  return (
+                    <button
+                      key={formula.id}
+                      onClick={() => {
+                        handleOpenPricing(formula);
+                        setShowNewPricingPicker(false);
+                        setNewPricingSearch('');
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors flex items-center gap-3"
+                    >
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: grupo?.cor || '#6B7280' }} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{formula.nome}</p>
+                        <p className="text-[10px] text-gray-400 italic">{formula.codigo}</p>
+                      </div>
+                      <DollarSign className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+                    </button>
+                  );
+                }) : (
+                  <div className="p-6 text-center">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {unpricedFormulas.length === 0 ? 'Todas as fórmulas já possuem precificação!' : 'Nenhuma fórmula encontrada.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {formulas.length > 0 && unpricedFormulas.length === 0 && (
+                <div className="p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium text-center">
+                    Todas precificadas! Clique em um card acima para editar.
+                  </p>
+                </div>
+              )}
+            </div>
+            </>
+          )}
         </div>
       </div>
 
